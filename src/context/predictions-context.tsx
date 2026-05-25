@@ -29,6 +29,8 @@ interface PredictionsContextType extends PredictionsState {
   submitPredictions: () => void
   resetPredictions: () => void
   autofillDemo: () => void
+  autofillAllOneZero: () => void
+  autofillGroupDemo: (groupId: string) => void
   autofillKnockoutDemo: () => void
   completedGroups: string[]
   totalGroupPredictions: number
@@ -149,6 +151,49 @@ export function PredictionsProvider({ children }: { children: ReactNode }) {
     setState(prev => ({ ...prev, groupPredictions, knockoutPredictions: {} }))
   }, [])
 
+  const autofillAllOneZero = useCallback(() => {
+    const groupPredictions: Record<number, { scoreA: number; scoreB: number }> = {}
+    for (const match of GROUP_MATCHES) {
+      groupPredictions[match.id] = { scoreA: 1, scoreB: 0 }
+    }
+    setState(prev => ({ ...prev, groupPredictions, knockoutPredictions: {} }))
+  }, [])
+
+  const autofillGroupDemo = useCallback((groupId: string) => {
+    const matches = GROUP_MATCHES.filter(m => m.groupId === groupId)
+    const seededRandom = (seed: number) => {
+      const x = Math.sin(seed) * 10000
+      return x - Math.floor(x)
+    }
+
+    setState(prev => {
+      const gp = { ...prev.groupPredictions }
+      for (const match of matches) {
+        const r = seededRandom(match.id * 7 + 13 + Date.now() % 1000)
+        const teamA = getTeamsByGroup(match.groupId)
+        const aIdx = teamA.findIndex(t => t.id === match.teamAId)
+        const bIdx = teamA.findIndex(t => t.id === match.teamBId)
+        const aStrength = 3 - aIdx
+        const bStrength = 3 - bIdx
+
+        let scoreA: number, scoreB: number
+        if (r < 0.45) {
+          scoreA = Math.min(aStrength, 4)
+          scoreB = Math.max(0, scoreA - 1 - Math.floor(r * 3))
+        } else if (r < 0.7) {
+          scoreA = Math.floor(r * 3)
+          scoreB = scoreA
+        } else {
+          scoreB = Math.min(bStrength, 3)
+          scoreA = Math.max(0, scoreB - 1 - Math.floor(r * 2))
+        }
+
+        gp[match.id] = { scoreA, scoreB }
+      }
+      return { ...prev, groupPredictions: gp }
+    })
+  }, [])
+
   const autofillKnockoutDemo = useCallback(() => {
     const gp = state.groupPredictions
     if (Object.keys(gp).length < 72) return
@@ -231,6 +276,8 @@ export function PredictionsProvider({ children }: { children: ReactNode }) {
       submitPredictions,
       resetPredictions,
       autofillDemo,
+      autofillAllOneZero,
+      autofillGroupDemo,
       autofillKnockoutDemo,
       completedGroups,
       totalGroupPredictions,

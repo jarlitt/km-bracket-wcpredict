@@ -138,3 +138,23 @@
   backdrop-filter: blur(12px);
   border: 1px solid oklch(0.5 0.15 264 / 12%);
 }
+
+@keyframes dice-shake {
+  0%, 37.5%, 100% { transform: rotate(0deg); }
+  3.125% { transform: rotate(-20deg); }
+  6.25% { transform: rotate(20deg); }
+  9.375% { transform: rotate(-18deg); }
+  12.5% { transform: rotate(18deg); }
+  15.625% { transform: rotate(-15deg); }
+  18.75% { transform: rotate(15deg); }
+  21.875% { transform: rotate(-12deg); }
+  25% { transform: rotate(12deg); }
+  28.125% { transform: rotate(-8deg); }
+  31.25% { transform: rotate(8deg); }
+  34.375% { transform: rotate(-4deg); }
+}
+
+.dice-shake {
+  display: inline-block;
+  animation: dice-shake 8s ease-in-out infinite;
+}

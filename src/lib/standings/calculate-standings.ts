@@ -39,6 +39,7 @@ function compareStandings(a: TeamStanding, b: TeamStanding): number {
   if (b.points !== a.points) return b.points - a.points;
   if (b.goalDifference !== a.goalDifference) return b.goalDifference - a.goalDifference;
   if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor;
+  if (a.team.fifaRanking !== b.team.fifaRanking) return a.team.fifaRanking - b.team.fifaRanking;
   return a.team.name.localeCompare(b.team.name);
 }
 

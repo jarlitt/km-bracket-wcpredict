@@ -18,7 +18,6 @@ export default function BracketPage() {
     setKnockoutPrediction,
     completedGroups,
     submitted,
-    autofillKnockoutDemo,
     totalKnockoutPredictions,
   } = usePredictions()
 
@@ -111,19 +110,12 @@ export default function BracketPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Knockout Bracket</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Click on a team to pick the winner. Picks: {totalKnockoutPredictions}/32
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {!submitted && (
-            <Button variant="outline" size="sm" onClick={autofillKnockoutDemo} className="text-xs">
-              Autofill Demo
-            </Button>
-          )}
+      <div>
+        <h1 className="text-2xl font-bold">Knockout Bracket</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Click on a team to pick the winner. Picks: {totalKnockoutPredictions}/32
+        </p>
+        <div className="flex gap-2 mt-3">
           <Link href="/predict/standings">
             <Button variant="outline" size="sm">Back to Standings</Button>
           </Link>

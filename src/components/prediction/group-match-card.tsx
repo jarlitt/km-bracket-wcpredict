@@ -11,11 +11,31 @@ interface GroupMatchCardProps {
   disabled?: boolean
 }
 
-function TeamDisplay({ team }: { team: Team }) {
+function TeamColumn({
+  team,
+  score,
+  onChange,
+  disabled,
+}: {
+  team: Team
+  score: number | undefined
+  onChange: (value: string) => void
+  disabled?: boolean
+}) {
   return (
-    <div className="flex flex-col items-center gap-1 w-20 sm:w-24">
-      <span className="text-2xl sm:text-3xl">{team.flag}</span>
-      <p className="font-medium text-xs sm:text-sm text-center leading-tight">{team.name}</p>
+    <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
+      <span className="text-3xl sm:text-4xl">{team.flag}</span>
+      <p className="font-medium text-xs sm:text-sm text-center leading-tight w-full truncate">{team.name}</p>
+      <Input
+        type="number"
+        min={0}
+        max={99}
+        value={score ?? ''}
+        onChange={e => onChange(e.target.value)}
+        disabled={disabled}
+        className="w-14 h-12 text-center text-xl font-bold p-0 mt-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        placeholder="-"
+      />
     </div>
   )
 }
@@ -25,6 +45,7 @@ export function GroupMatchCard({ match, prediction, onPredictionChange, disabled
   const teamB = getTeamById(match.teamBId)
 
   const handleScoreChange = (side: 'A' | 'B', value: string) => {
+    if (value.length > 1 && value.startsWith('0')) return
     const numValue = value === '' ? 0 : Math.max(0, Math.min(99, parseInt(value) || 0))
     if (side === 'A') {
       onPredictionChange(match.id, numValue, prediction?.scoreB ?? 0)
@@ -34,34 +55,24 @@ export function GroupMatchCard({ match, prediction, onPredictionChange, disabled
   }
 
   return (
-    <div className="flex items-center justify-center gap-4 sm:gap-6 p-4 sm:p-5 rounded-xl bg-card/50 border border-border/50 hover:border-border transition-colors">
-      <TeamDisplay team={teamA} />
+    <div className="flex items-stretch p-4 sm:p-5 rounded-xl bg-card/50 border border-border/50 hover:border-border transition-colors">
+      <TeamColumn
+        team={teamA}
+        score={prediction?.scoreA}
+        onChange={v => handleScoreChange('A', v)}
+        disabled={disabled}
+      />
 
-      <div className="flex items-center gap-2">
-        <Input
-          type="number"
-          min={0}
-          max={99}
-          value={prediction?.scoreA ?? ''}
-          onChange={e => handleScoreChange('A', e.target.value)}
-          disabled={disabled}
-          className="w-12 h-12 text-center text-xl font-bold p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-          placeholder="-"
-        />
-        <span className="text-muted-foreground font-bold text-lg">:</span>
-        <Input
-          type="number"
-          min={0}
-          max={99}
-          value={prediction?.scoreB ?? ''}
-          onChange={e => handleScoreChange('B', e.target.value)}
-          disabled={disabled}
-          className="w-12 h-12 text-center text-xl font-bold p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-          placeholder="-"
-        />
+      <div className="flex items-center justify-center px-3 sm:px-4">
+        <span className="text-muted-foreground/60 font-bold text-sm">vs</span>
       </div>
 
-      <TeamDisplay team={teamB} />
+      <TeamColumn
+        team={teamB}
+        score={prediction?.scoreB}
+        onChange={v => handleScoreChange('B', v)}
+        disabled={disabled}
+      />
     </div>
   )
 }

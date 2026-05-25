@@ -22,7 +22,7 @@ export default function PredictLayout({ children }: { children: React.ReactNode 
 
   return (
     <div className="min-h-[calc(100vh-4rem)]">
-      <div className="border-b border-border/50 bg-card/30 backdrop-blur-sm sticky top-16 z-40">
+      <div className="border-b border-border/50 bg-card/30 backdrop-blur-sm sticky top-14 z-40">
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex items-center gap-1 sm:gap-2">
             {STEPS.map((step, i) => {

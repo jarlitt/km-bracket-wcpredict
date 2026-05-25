@@ -1,7 +1,5 @@
 'use client'
 
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
 import type { TeamStanding } from '@/types'
 import { cn } from '@/lib/utils'
 
@@ -19,62 +17,83 @@ export function GroupStandingsTable({ groupId, standings, qualifiedThirdGroups }
       <div className="px-4 py-2.5 bg-card/80 border-b border-border/50 flex items-center justify-between">
         <h3 className="font-bold text-sm">Group {groupId}</h3>
       </div>
-      <Table>
-        <TableHeader>
-          <TableRow className="border-border/30 hover:bg-transparent">
-            <TableHead className="w-8 text-center text-xs">#</TableHead>
-            <TableHead className="text-xs">Team</TableHead>
-            <TableHead className="w-8 text-center text-xs">P</TableHead>
-            <TableHead className="w-8 text-center text-xs">W</TableHead>
-            <TableHead className="w-8 text-center text-xs">D</TableHead>
-            <TableHead className="w-8 text-center text-xs">L</TableHead>
-            <TableHead className="w-10 text-center text-xs">GD</TableHead>
-            <TableHead className="w-10 text-center text-xs font-bold">Pts</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {standings.map((standing, index) => {
-            const qualifies = index < 2 || (index === 2 && isThirdQualified)
-            return (
-              <TableRow
-                key={standing.team.id}
-                className={cn(
-                  'border-border/20',
-                  index < 2 && 'bg-emerald-500/5',
-                  index === 2 && isThirdQualified && 'bg-blue-500/5',
-                )}
-              >
-                <TableCell className="text-center text-xs font-medium">
-                  {qualifies ? (
-                    <span className={cn(
-                      'inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold',
-                      index < 2 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'
-                    )}>
-                      {index + 1}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">{index + 1}</span>
+
+      <div className="relative overflow-x-auto">
+        <table className="w-full text-sm table-fixed">
+          <colgroup>
+            <col className="w-[160px]" />
+            <col className="w-[32px]" />
+            <col className="w-[32px]" />
+            <col className="w-[32px]" />
+            <col className="w-[32px]" />
+            <col className="w-[32px]" />
+            <col className="w-[32px]" />
+            <col className="w-[32px]" />
+            <col className="w-[36px]" />
+          </colgroup>
+          <thead>
+            <tr className="border-b border-border/30 text-muted-foreground">
+              <th className="sticky left-0 z-10 text-left pl-3 pr-2 py-2 bg-card shadow-[2px_0_4px_-1px_rgba(0,0,0,0.4)]">
+                <div className="flex items-center gap-1">
+                  <span className="w-5 text-center text-xs">#</span>
+                  <span className="text-xs">Team</span>
+                </div>
+              </th>
+              <th className="text-center text-xs px-0.5 py-2">P</th>
+              <th className="text-center text-xs px-0.5 py-2">W</th>
+              <th className="text-center text-xs px-0.5 py-2">D</th>
+              <th className="text-center text-xs px-0.5 py-2">L</th>
+              <th className="text-center text-xs px-0.5 py-2">GF</th>
+              <th className="text-center text-xs px-0.5 py-2">GA</th>
+              <th className="text-center text-xs px-0.5 py-2">GD</th>
+              <th className="text-center text-xs font-bold px-0.5 py-2">Pts</th>
+            </tr>
+          </thead>
+          <tbody>
+            {standings.map((standing, index) => {
+              const qualifies = index < 2 || (index === 2 && isThirdQualified)
+              return (
+                <tr
+                  key={standing.team.id}
+                  className={cn(
+                    'border-b border-border/20',
+                    index < 2 && 'bg-emerald-500/5',
+                    index === 2 && isThirdQualified && 'bg-blue-500/5',
                   )}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">{standing.team.flag}</span>
-                    <span className="text-xs sm:text-sm font-medium">{standing.team.name}</span>
-                  </div>
-                </TableCell>
-                <TableCell className="text-center text-xs">{standing.played}</TableCell>
-                <TableCell className="text-center text-xs">{standing.won}</TableCell>
-                <TableCell className="text-center text-xs">{standing.drawn}</TableCell>
-                <TableCell className="text-center text-xs">{standing.lost}</TableCell>
-                <TableCell className="text-center text-xs">
-                  {standing.goalDifference > 0 ? '+' : ''}{standing.goalDifference}
-                </TableCell>
-                <TableCell className="text-center text-sm font-bold">{standing.points}</TableCell>
-              </TableRow>
-            )
-          })}
-        </TableBody>
-      </Table>
+                >
+                  <td className="sticky left-0 z-10 pl-3 pr-2 py-2 overflow-hidden bg-card shadow-[2px_0_4px_-1px_rgba(0,0,0,0.4)]">
+                    <div className="flex items-center gap-1.5 overflow-hidden">
+                      {qualifies ? (
+                        <span className={cn(
+                          'inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold shrink-0',
+                          index < 2 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'
+                        )}>
+                          {index + 1}
+                        </span>
+                      ) : (
+                        <span className="w-5 text-center text-xs text-muted-foreground shrink-0">{index + 1}</span>
+                      )}
+                      <span className="text-base shrink-0">{standing.team.flag}</span>
+                      <span className="text-xs font-medium truncate">{standing.team.name}</span>
+                    </div>
+                  </td>
+                  <td className="text-center text-xs px-0.5 py-2">{standing.played}</td>
+                  <td className="text-center text-xs px-0.5 py-2">{standing.won}</td>
+                  <td className="text-center text-xs px-0.5 py-2">{standing.drawn}</td>
+                  <td className="text-center text-xs px-0.5 py-2">{standing.lost}</td>
+                  <td className="text-center text-xs px-0.5 py-2">{standing.goalsFor}</td>
+                  <td className="text-center text-xs px-0.5 py-2">{standing.goalsAgainst}</td>
+                  <td className="text-center text-xs px-0.5 py-2">
+                    {standing.goalDifference > 0 ? '+' : ''}{standing.goalDifference}
+                  </td>
+                  <td className="text-center text-sm font-bold px-0.5 py-2">{standing.points}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
       <div className="px-4 py-2 border-t border-border/30 flex gap-3 text-[10px] text-muted-foreground">
         <span className="flex items-center gap-1">
           <span className="w-2 h-2 rounded-full bg-emerald-500/40" /> Qualifies

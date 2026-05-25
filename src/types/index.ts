@@ -4,6 +4,7 @@ export interface Team {
   code: string;
   flag: string;
   groupId: string;
+  fifaRanking: number;
 }
 
 export interface GroupMatch {

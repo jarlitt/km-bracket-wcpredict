@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { Menu, X, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/auth-context'
+import { usePredictions } from '@/context/predictions-context'
 
 const NAV_LINKS = [
   { href: '/predict/groups', label: 'Predict' },
@@ -14,10 +15,15 @@ const NAV_LINKS = [
   { href: '/rules', label: 'Rules' },
 ]
 
+const ADMIN_EMAILS = ['jorge.astiaso@kingmakers.com', 'jorge.arlitt+1@gmail.com']
+
 export function Navbar() {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
   const { user, logout } = useAuth()
+  const { autofillDemo, autofillAllOneZero, autofillKnockoutDemo, resetPredictions, submitted } = usePredictions()
+
+  const isAdmin = ADMIN_EMAILS.includes(user?.email ?? '') && !submitted
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-xl">
@@ -57,15 +63,19 @@ export function Navbar() {
           )}
         </div>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="md:hidden"
-          onClick={() => setMobileOpen(!mobileOpen)}
-          aria-label="Toggle menu"
-        >
-          {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
-        </Button>
+        <div className="flex items-center gap-1 md:hidden">
+          {isAdmin && (
+            <span className="w-6 h-6 rounded-full bg-red-600 text-white text-xs font-bold flex items-center justify-center">D</span>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label="Toggle menu"
+          >
+            {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+          </Button>
+        </div>
       </div>
 
       {mobileOpen && (
@@ -88,6 +98,48 @@ export function Navbar() {
                 </Link>
               )
             })}
+
+            {isAdmin && (
+              <div className="mt-2 border-t border-border/40 pt-3">
+                <p className="px-3 text-xs font-bold text-red-400 mb-2 flex items-center gap-1.5">
+                  <span className="w-4 h-4 rounded-full bg-red-600 text-white text-[9px] font-bold flex items-center justify-center">D</span>
+                  Demo Controls
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { autofillDemo(); setMobileOpen(false) }}
+                  className="justify-start text-muted-foreground w-full"
+                >
+                  Autofill Groups
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { autofillAllOneZero(); setMobileOpen(false) }}
+                  className="justify-start text-muted-foreground w-full"
+                >
+                  Set all 1-0
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { autofillKnockoutDemo(); setMobileOpen(false) }}
+                  className="justify-start text-muted-foreground w-full"
+                >
+                  Autofill Knockout
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { resetPredictions(); setMobileOpen(false) }}
+                  className="justify-start text-red-400 w-full"
+                >
+                  Reset All
+                </Button>
+              </div>
+            )}
+
             {user && (
               <div className="mt-2 border-t border-border/40 pt-3">
                 <p className="px-3 text-sm text-muted-foreground mb-2">{user.displayName}</p>

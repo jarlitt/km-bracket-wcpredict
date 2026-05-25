@@ -3,7 +3,6 @@
 import { useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { GroupStandingsTable } from '@/components/prediction/group-standings-table'
 import { cn } from '@/lib/utils'
 import { usePredictions } from '@/context/predictions-context'
@@ -32,14 +31,12 @@ export default function StandingsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Group Standings</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Auto-generated from your predicted scores. Top 2 + 8 best 3rd-place teams advance.
-          </p>
-        </div>
-        <div className="flex gap-2">
+      <div>
+        <h1 className="text-2xl font-bold">Group Standings</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Auto-generated from your predicted scores. Top 2 + 8 best 3rd-place teams advance.
+        </p>
+        <div className="flex gap-2 mt-3">
           <Link href="/predict/groups">
             <Button variant="outline" size="sm">Edit Scores</Button>
           </Link>
@@ -79,64 +76,84 @@ export default function StandingsPage() {
           <h3 className="font-bold text-sm">3rd-Place Ranking</h3>
           <span className="text-xs text-muted-foreground">Top 8 advance to Round of 32</span>
         </div>
-        <Table>
-          <TableHeader>
-            <TableRow className="border-border/30 hover:bg-transparent">
-              <TableHead className="w-8 text-center text-xs">#</TableHead>
-              <TableHead className="text-xs">Team</TableHead>
-              <TableHead className="w-14 text-center text-xs">Group</TableHead>
-              <TableHead className="w-8 text-center text-xs">P</TableHead>
-              <TableHead className="w-8 text-center text-xs">W</TableHead>
-              <TableHead className="w-8 text-center text-xs">D</TableHead>
-              <TableHead className="w-8 text-center text-xs">L</TableHead>
-              <TableHead className="w-10 text-center text-xs">GD</TableHead>
-              <TableHead className="w-10 text-center text-xs">GF</TableHead>
-              <TableHead className="w-10 text-center text-xs font-bold">Pts</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {allThirdPlaceTeams.map((entry, index) => {
-              const qualifies = index < 8
-              return (
-                <TableRow
-                  key={entry.groupId}
-                  className={cn(
-                    'border-border/20',
-                    qualifies && 'bg-blue-500/5',
-                  )}
-                >
-                  <TableCell className="text-center text-xs font-medium">
-                    {qualifies ? (
-                      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-400">
-                        {index + 1}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">{index + 1}</span>
+
+        <div className="relative overflow-x-auto">
+          <table className="w-full text-sm table-fixed">
+            <colgroup>
+              <col className="w-[160px]" />
+              <col className="w-[40px]" />
+              <col className="w-[32px]" />
+              <col className="w-[32px]" />
+              <col className="w-[32px]" />
+              <col className="w-[32px]" />
+              <col className="w-[32px]" />
+              <col className="w-[32px]" />
+              <col className="w-[32px]" />
+              <col className="w-[36px]" />
+            </colgroup>
+            <thead>
+              <tr className="border-b border-border/30 text-muted-foreground">
+                <th className="sticky left-0 z-10 text-left pl-3 pr-2 py-2 bg-card shadow-[2px_0_4px_-1px_rgba(0,0,0,0.4)]">
+                  <div className="flex items-center gap-1">
+                    <span className="w-5 text-center text-xs">#</span>
+                    <span className="text-xs">Team</span>
+                  </div>
+                </th>
+                <th className="text-center text-xs px-0.5 py-2">Grp</th>
+                <th className="text-center text-xs px-0.5 py-2">P</th>
+                <th className="text-center text-xs px-0.5 py-2">W</th>
+                <th className="text-center text-xs px-0.5 py-2">D</th>
+                <th className="text-center text-xs px-0.5 py-2">L</th>
+                <th className="text-center text-xs px-0.5 py-2">GF</th>
+                <th className="text-center text-xs px-0.5 py-2">GA</th>
+                <th className="text-center text-xs px-0.5 py-2">GD</th>
+                <th className="text-center text-xs font-bold px-0.5 py-2">Pts</th>
+              </tr>
+            </thead>
+            <tbody>
+              {allThirdPlaceTeams.map((entry, index) => {
+                const qualifies = index < 8
+                return (
+                  <tr
+                    key={entry.groupId}
+                    className={cn(
+                      'border-b border-border/20',
+                      qualifies && 'bg-blue-500/5',
                     )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">{entry.standing.team.flag}</span>
-                      <span className="text-xs sm:text-sm font-medium">{entry.standing.team.name}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Badge variant="secondary" className="text-[10px] px-1.5">{entry.groupId}</Badge>
-                  </TableCell>
-                  <TableCell className="text-center text-xs">{entry.standing.played}</TableCell>
-                  <TableCell className="text-center text-xs">{entry.standing.won}</TableCell>
-                  <TableCell className="text-center text-xs">{entry.standing.drawn}</TableCell>
-                  <TableCell className="text-center text-xs">{entry.standing.lost}</TableCell>
-                  <TableCell className="text-center text-xs">
-                    {entry.standing.goalDifference > 0 ? '+' : ''}{entry.standing.goalDifference}
-                  </TableCell>
-                  <TableCell className="text-center text-xs">{entry.standing.goalsFor}</TableCell>
-                  <TableCell className="text-center text-sm font-bold">{entry.standing.points}</TableCell>
-                </TableRow>
-              )
-            })}
-          </TableBody>
-        </Table>
+                  >
+                    <td className="sticky left-0 z-10 pl-3 pr-2 py-2 overflow-hidden bg-card shadow-[2px_0_4px_-1px_rgba(0,0,0,0.4)]">
+                      <div className="flex items-center gap-1.5 overflow-hidden">
+                        {qualifies ? (
+                          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-400 shrink-0">
+                            {index + 1}
+                          </span>
+                        ) : (
+                          <span className="w-5 text-center text-xs text-muted-foreground shrink-0">{index + 1}</span>
+                        )}
+                        <span className="text-base shrink-0">{entry.standing.team.flag}</span>
+                        <span className="text-xs font-medium truncate">{entry.standing.team.name}</span>
+                      </div>
+                    </td>
+                    <td className="text-center px-0.5 py-2">
+                      <Badge variant="secondary" className="text-[10px] px-1.5">{entry.groupId}</Badge>
+                    </td>
+                    <td className="text-center text-xs px-0.5 py-2">{entry.standing.played}</td>
+                    <td className="text-center text-xs px-0.5 py-2">{entry.standing.won}</td>
+                    <td className="text-center text-xs px-0.5 py-2">{entry.standing.drawn}</td>
+                    <td className="text-center text-xs px-0.5 py-2">{entry.standing.lost}</td>
+                    <td className="text-center text-xs px-0.5 py-2">{entry.standing.goalsFor}</td>
+                    <td className="text-center text-xs px-0.5 py-2">{entry.standing.goalsAgainst}</td>
+                    <td className="text-center text-xs px-0.5 py-2">
+                      {entry.standing.goalDifference > 0 ? '+' : ''}{entry.standing.goalDifference}
+                    </td>
+                    <td className="text-center text-sm font-bold px-0.5 py-2">{entry.standing.points}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+
         <div className="px-4 py-2 border-t border-border/30 flex gap-3 text-[10px] text-muted-foreground">
           <span className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-blue-500/40" /> Advances to Round of 32
