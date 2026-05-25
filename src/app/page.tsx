@@ -6,6 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { PredictionBanner } from '@/components/prediction/prediction-banner'
 
 const FEATURES = [
   {
@@ -45,6 +46,7 @@ const SCORING_ROWS = [
 export default function HomePage() {
   return (
     <div className="gradient-bg min-h-screen">
+      <PredictionBanner />
       <section className="flex flex-col items-center justify-center px-4 pb-20 pt-24 text-center md:pt-32">
         <p className="mb-4 text-sm font-medium uppercase tracking-widest text-muted-foreground">
           FIFA World Cup 2026
