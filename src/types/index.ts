@@ -13,6 +13,8 @@ export interface GroupMatch {
   teamAId: number;
   teamBId: number;
   matchNumber: number;
+  date?: string;
+  time?: string;
 }
 
 export interface GroupPrediction {
@@ -39,6 +41,9 @@ export interface KnockoutMatch {
   teamAId: number | null;
   teamBId: number | null;
   label: string;
+  date?: string;
+  time?: string;
+  matchNumber?: number;
 }
 
 export interface KnockoutPrediction {

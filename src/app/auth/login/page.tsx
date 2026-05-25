@@ -39,7 +39,7 @@ export default function LoginPage() {
         <CardHeader className="text-center">
           <div className="text-3xl mb-2">⚽</div>
           <CardTitle className="text-xl">Welcome back</CardTitle>
-          <CardDescription>Log in to your WC2026 Predictor account</CardDescription>
+          <CardDescription>Log in to the KingMakers WC2026 Predictor</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} noValidate className="space-y-4">

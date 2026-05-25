@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -29,8 +30,8 @@ export function Navbar() {
     <header className="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2 font-bold tracking-tight">
-          <span className="text-lg">⚽</span>
-          <span className="text-base">WC2026</span>
+          <Image src="/km-logo.png" alt="KingMakers" width={24} height={24} />
+          <span className="text-base">KM WC2026</span>
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">

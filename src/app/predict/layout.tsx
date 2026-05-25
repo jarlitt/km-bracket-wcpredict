@@ -10,7 +10,7 @@ const STEPS = [
   { href: '/predict/groups', label: 'Group Matches', step: 1 },
   { href: '/predict/standings', label: 'Standings', step: 2 },
   { href: '/predict/bracket', label: 'Bracket', step: 3 },
-  { href: '/predict/review', label: 'Review', step: 4 },
+  { href: '/predict/summary', label: 'Summary', step: 4 },
 ]
 
 export default function PredictLayout({ children }: { children: React.ReactNode }) {

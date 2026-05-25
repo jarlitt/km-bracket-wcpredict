@@ -34,7 +34,7 @@ export default function StandingsPage() {
       <div>
         <h1 className="text-2xl font-bold">Group Standings</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Auto-generated from your predicted scores. Top 2 + 8 best 3rd-place teams advance.
+          These standings are auto-generated from your predicted scores — for your review only. Top 2 + 8 best 3rd-place teams advance to the knockout stage.
         </p>
         <div className="flex gap-2 mt-3">
           <Link href="/predict/groups">
@@ -72,9 +72,9 @@ export default function StandingsPage() {
       </div>
 
       <div className="rounded-xl border border-border/50 bg-card/50 overflow-hidden">
-        <div className="px-4 py-2.5 bg-card/80 border-b border-border/50 flex items-center justify-between">
+        <div className="px-4 py-2.5 bg-card/80 border-b border-border/50">
           <h3 className="font-bold text-sm">3rd-Place Ranking</h3>
-          <span className="text-xs text-muted-foreground">Top 8 advance to Round of 32</span>
+          <p className="text-xs text-muted-foreground mt-0.5">Top 8 advance to Round of 32</p>
         </div>
 
         <div className="relative overflow-x-auto">
@@ -164,13 +164,16 @@ export default function StandingsPage() {
         </div>
       </div>
 
-      {allComplete && (
-        <div className="flex justify-end">
+      <div className="flex gap-2 justify-between items-center">
+        <Link href="/predict/groups">
+          <Button variant="outline" size="sm">Edit Scores</Button>
+        </Link>
+        {allComplete && (
           <Link href="/predict/bracket">
-            <Button size="lg">Continue to Knockout Bracket</Button>
+            <Button size="sm">Next: Bracket</Button>
           </Link>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

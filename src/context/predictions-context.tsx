@@ -228,8 +228,8 @@ export function PredictionsProvider({ children }: { children: ReactNode }) {
     }
 
     for (const m of matches) {
-      if (m.round === 'R32' && m.teamAId) {
-        picks[m.id] = m.teamAId
+      if (m.round === 'R32' && m.teamAId && m.teamBId) {
+        picks[m.id] = Math.random() < 0.5 ? m.teamAId : m.teamBId
       }
     }
 
@@ -237,19 +237,27 @@ export function PredictionsProvider({ children }: { children: ReactNode }) {
     for (const round of rounds) {
       const roundMatches = Object.entries(bracketTree).filter(([id]) => id.startsWith(round))
       for (const [matchId, src] of roundMatches) {
-        const teamA = src.loser
-          ? (picks[src.a] === matchMap.get(src.a)?.teamAId ? matchMap.get(src.a)?.teamBId : matchMap.get(src.a)?.teamAId)
-          : picks[src.a]
-        const teamB = src.loser
-          ? (picks[src.b] === matchMap.get(src.b)?.teamAId ? matchMap.get(src.b)?.teamBId : matchMap.get(src.b)?.teamAId)
-          : picks[src.b]
+        const getWinner = (id: string) => picks[id] ?? null
+        const getLoser = (id: string) => {
+          const w = picks[id]
+          const mm = matchMap.get(id)
+          if (!w || !mm) return null
+          return w === mm.teamAId ? mm.teamBId : mm.teamAId
+        }
+
+        const teamA = src.loser ? getLoser(src.a) : getWinner(src.a)
+        const teamB = src.loser ? getLoser(src.b) : getWinner(src.b)
 
         const m = matchMap.get(matchId)
         if (m) {
           m.teamAId = teamA ?? null
           m.teamBId = teamB ?? null
         }
-        if (teamA) picks[matchId] = teamA
+        if (teamA && teamB) {
+          picks[matchId] = Math.random() < 0.5 ? teamA : teamB
+        } else if (teamA) {
+          picks[matchId] = teamA
+        }
       }
     }
 

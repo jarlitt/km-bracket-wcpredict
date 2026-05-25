@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { BracketView } from '@/components/prediction/bracket-view'
 import { usePredictions } from '@/context/predictions-context'
@@ -9,16 +10,22 @@ import { calculateGroupStandings } from '@/lib/standings/calculate-standings'
 import { determineBestThirdPlaceTeams } from '@/lib/standings/best-third'
 import { generateKnockoutBracket } from '@/lib/bracket/bracket-structure'
 import type { KnockoutMatch } from '@/types'
+import { toast } from 'sonner'
 import Link from 'next/link'
 
 export default function BracketPage() {
+  const router = useRouter()
+  const [highlightMissing, setHighlightMissing] = useState<Set<string>>(new Set())
   const {
     groupPredictions,
     knockoutPredictions,
     setKnockoutPrediction,
     completedGroups,
     submitted,
+    submitPredictions,
+    totalGroupPredictions,
     totalKnockoutPredictions,
+    autofillKnockoutDemo,
   } = usePredictions()
 
   const allStandings = useMemo(() => {
@@ -88,11 +95,44 @@ export default function BracketPage() {
 
   const handlePickWinner = useCallback((matchId: string, winnerId: number) => {
     setKnockoutPrediction(matchId, winnerId)
+    setHighlightMissing(prev => {
+      if (!prev.has(matchId)) return prev
+      const next = new Set(prev)
+      next.delete(matchId)
+      return next
+    })
   }, [setKnockoutPrediction])
 
-  const allComplete = completedGroups.length === 12
+  const allGroupsComplete = completedGroups.length === 12
+  const allKnockoutComplete = totalKnockoutPredictions >= 32
+  const canSubmit = allGroupsComplete && allKnockoutComplete && !submitted
 
-  if (!allComplete) {
+  const handleSubmit = () => {
+    if (submitted) return
+
+    if (!allGroupsComplete) {
+      toast.error(`Complete all group predictions first (${totalGroupPredictions}/72)`)
+      return
+    }
+
+    if (!allKnockoutComplete) {
+      const missing = new Set<string>()
+      for (const match of resolvedMatches) {
+        if (match.teamAId && match.teamBId && !knockoutPredictions[match.id]) {
+          missing.add(match.id)
+        }
+      }
+      setHighlightMissing(missing)
+      toast.error(`Pick all knockout winners (${totalKnockoutPredictions}/32)`)
+      return
+    }
+
+    submitPredictions()
+    toast.success('Predictions submitted and locked!')
+    router.push('/predict/summary')
+  }
+
+  if (!allGroupsComplete) {
     return (
       <div className="space-y-6">
         <h1 className="text-2xl font-bold">Knockout Bracket</h1>
@@ -113,15 +153,36 @@ export default function BracketPage() {
       <div>
         <h1 className="text-2xl font-bold">Knockout Bracket</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Click on a team to pick the winner. Picks: {totalKnockoutPredictions}/32
+          {submitted
+            ? 'Your predictions are locked. View your summary for details.'
+            : `Click on a team to pick the winner. Picks: ${totalKnockoutPredictions}/32`}
         </p>
-        <div className="flex gap-2 mt-3">
+        <div className="flex flex-wrap items-center gap-2 mt-3">
           <Link href="/predict/standings">
             <Button variant="outline" size="sm">Back to Standings</Button>
           </Link>
-          <Link href="/predict/review">
-            <Button size="sm">Review & Submit</Button>
-          </Link>
+          {submitted ? (
+            <Link href="/predict/summary">
+              <Button size="sm">View Summary</Button>
+            </Link>
+          ) : (
+            <>
+              <Button
+                size="sm"
+                onClick={handleSubmit}
+                className={canSubmit ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+              >
+                Submit Predictions
+              </Button>
+              <button
+                type="button"
+                onClick={autofillKnockoutDemo}
+                className="text-xs font-medium text-pink-400 hover:text-pink-300 transition-colors flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-pink-500/20 hover:border-pink-500/40 hover:bg-pink-500/5"
+              >
+                <span className="dice-shake">🎲</span> Get Lucky
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -130,12 +191,26 @@ export default function BracketPage() {
         predictions={knockoutPredictions}
         onPickWinner={handlePickWinner}
         disabled={submitted}
+        highlightMissing={highlightMissing}
       />
 
-      <div className="flex justify-end">
-        <Link href="/predict/review">
-          <Button size="lg">Review & Submit</Button>
+      <div className="flex gap-2 justify-between items-center">
+        <Link href="/predict/standings">
+          <Button variant="outline" size="sm">Back to Standings</Button>
         </Link>
+        {submitted ? (
+          <Link href="/predict/summary">
+            <Button size="sm">View Summary</Button>
+          </Link>
+        ) : (
+          <Button
+            size="sm"
+            onClick={handleSubmit}
+            className={canSubmit ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+          >
+            Submit Predictions
+          </Button>
+        )}
       </div>
     </div>
   )

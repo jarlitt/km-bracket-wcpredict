@@ -27,26 +27,66 @@ interface R32Definition {
 }
 
 const FIXED_R32: R32Definition[] = [
-  { matchId: 'R32-1',  position: 1,  slotA: { position: 1, groupId: 'C' }, slotB: { position: 2, groupId: 'F' } },
-  { matchId: 'R32-3',  position: 3,  slotA: { position: 2, groupId: 'A' }, slotB: { position: 2, groupId: 'D' } },
+  // Left half
+  { matchId: 'R32-3',  position: 3,  slotA: { position: 2, groupId: 'A' }, slotB: { position: 2, groupId: 'B' } },
   { matchId: 'R32-4',  position: 4,  slotA: { position: 1, groupId: 'F' }, slotB: { position: 2, groupId: 'C' } },
-  { matchId: 'R32-6',  position: 6,  slotA: { position: 2, groupId: 'B' }, slotB: { position: 2, groupId: 'E' } },
-  { matchId: 'R32-7',  position: 7,  slotA: { position: 1, groupId: 'H' }, slotB: { position: 2, groupId: 'J' } },
-  { matchId: 'R32-9',  position: 9,  slotA: { position: 2, groupId: 'G' }, slotB: { position: 2, groupId: 'L' } },
-  { matchId: 'R32-10', position: 10, slotA: { position: 1, groupId: 'J' }, slotB: { position: 2, groupId: 'H' } },
-  { matchId: 'R32-12', position: 12, slotA: { position: 2, groupId: 'I' }, slotB: { position: 2, groupId: 'K' } },
+  { matchId: 'R32-5',  position: 5,  slotA: { position: 2, groupId: 'K' }, slotB: { position: 2, groupId: 'L' } },
+  { matchId: 'R32-6',  position: 6,  slotA: { position: 1, groupId: 'H' }, slotB: { position: 2, groupId: 'J' } },
+  // Right half
+  { matchId: 'R32-9',  position: 9,  slotA: { position: 1, groupId: 'C' }, slotB: { position: 2, groupId: 'F' } },
+  { matchId: 'R32-10', position: 10, slotA: { position: 2, groupId: 'E' }, slotB: { position: 2, groupId: 'I' } },
+  { matchId: 'R32-13', position: 13, slotA: { position: 1, groupId: 'J' }, slotB: { position: 2, groupId: 'H' } },
+  { matchId: 'R32-14', position: 14, slotA: { position: 2, groupId: 'D' }, slotB: { position: 2, groupId: 'G' } },
 ];
 
 const VARIABLE_R32: { matchId: string; position: number; groupWinnerKey: string; winnerSlot: BracketSlot }[] = [
-  { matchId: 'R32-2',  position: 2,  groupWinnerKey: '1A', winnerSlot: { position: 1, groupId: 'A' } },
-  { matchId: 'R32-5',  position: 5,  groupWinnerKey: '1B', winnerSlot: { position: 1, groupId: 'B' } },
-  { matchId: 'R32-8',  position: 8,  groupWinnerKey: '1L', winnerSlot: { position: 1, groupId: 'L' } },
-  { matchId: 'R32-11', position: 11, groupWinnerKey: '1I', winnerSlot: { position: 1, groupId: 'I' } },
-  { matchId: 'R32-13', position: 13, groupWinnerKey: '1D', winnerSlot: { position: 1, groupId: 'D' } },
-  { matchId: 'R32-14', position: 14, groupWinnerKey: '1G', winnerSlot: { position: 1, groupId: 'G' } },
-  { matchId: 'R32-15', position: 15, groupWinnerKey: '1E', winnerSlot: { position: 1, groupId: 'E' } },
+  // Left half
+  { matchId: 'R32-1',  position: 1,  groupWinnerKey: '1E', winnerSlot: { position: 1, groupId: 'E' } },
+  { matchId: 'R32-2',  position: 2,  groupWinnerKey: '1I', winnerSlot: { position: 1, groupId: 'I' } },
+  { matchId: 'R32-7',  position: 7,  groupWinnerKey: '1D', winnerSlot: { position: 1, groupId: 'D' } },
+  { matchId: 'R32-8',  position: 8,  groupWinnerKey: '1G', winnerSlot: { position: 1, groupId: 'G' } },
+  // Right half
+  { matchId: 'R32-11', position: 11, groupWinnerKey: '1A', winnerSlot: { position: 1, groupId: 'A' } },
+  { matchId: 'R32-12', position: 12, groupWinnerKey: '1L', winnerSlot: { position: 1, groupId: 'L' } },
+  { matchId: 'R32-15', position: 15, groupWinnerKey: '1B', winnerSlot: { position: 1, groupId: 'B' } },
   { matchId: 'R32-16', position: 16, groupWinnerKey: '1K', winnerSlot: { position: 1, groupId: 'K' } },
 ];
+
+// Madrid time (CEST / UTC+2) — from FIFA.com with country=ES
+const MATCH_SCHEDULE: Record<string, { date: string; time: string; matchNumber: number }> = {
+  'R32-1':  { date: '29 Jun', time: '20:30', matchNumber: 74 },
+  'R32-2':  { date: '30 Jun', time: '21:00', matchNumber: 77 },
+  'R32-3':  { date: '28 Jun', time: '19:00', matchNumber: 73 },
+  'R32-4':  { date: '30 Jun', time: '01:00', matchNumber: 75 },
+  'R32-5':  { date: '2 Jul',  time: '23:00', matchNumber: 83 },
+  'R32-6':  { date: '2 Jul',  time: '19:00', matchNumber: 84 },
+  'R32-7':  { date: '2 Jul',  time: '00:00', matchNumber: 81 },
+  'R32-8':  { date: '1 Jul',  time: '20:00', matchNumber: 82 },
+  'R32-9':  { date: '29 Jun', time: '17:00', matchNumber: 76 },
+  'R32-10': { date: '30 Jun', time: '17:00', matchNumber: 78 },
+  'R32-11': { date: '1 Jul',  time: '01:00', matchNumber: 79 },
+  'R32-12': { date: '1 Jul',  time: '16:00', matchNumber: 80 },
+  'R32-13': { date: '3 Jul',  time: '22:00', matchNumber: 86 },
+  'R32-14': { date: '3 Jul',  time: '18:00', matchNumber: 88 },
+  'R32-15': { date: '3 Jul',  time: '03:00', matchNumber: 85 },
+  'R32-16': { date: '4 Jul',  time: '01:30', matchNumber: 87 },
+  'R16-1':  { date: '4 Jul',  time: '21:00', matchNumber: 89 },
+  'R16-2':  { date: '4 Jul',  time: '17:00', matchNumber: 90 },
+  'R16-3':  { date: '6 Jul',  time: '19:00', matchNumber: 93 },
+  'R16-4':  { date: '7 Jul',  time: '00:00', matchNumber: 94 },
+  'R16-5':  { date: '5 Jul',  time: '20:00', matchNumber: 91 },
+  'R16-6':  { date: '6 Jul',  time: '00:00', matchNumber: 92 },
+  'R16-7':  { date: '7 Jul',  time: '16:00', matchNumber: 95 },
+  'R16-8':  { date: '7 Jul',  time: '20:00', matchNumber: 96 },
+  'QF-1':   { date: '9 Jul',  time: '22:00', matchNumber: 97 },
+  'QF-2':   { date: '10 Jul', time: '19:00', matchNumber: 98 },
+  'QF-3':   { date: '11 Jul', time: '23:00', matchNumber: 99 },
+  'QF-4':   { date: '12 Jul', time: '01:00', matchNumber: 100 },
+  'SF-1':   { date: '14 Jul', time: '21:00', matchNumber: 101 },
+  'SF-2':   { date: '15 Jul', time: '21:00', matchNumber: 102 },
+  '3RD':    { date: '18 Jul', time: '21:00', matchNumber: 103 },
+  'F':      { date: '19 Jul', time: '19:00', matchNumber: 104 },
+};
 
 const THIRD_PLACE_MAPPING: Record<string, Record<string, string>> = {
   'ABCDEFGH': { '1A': '3H', '1B': '3G', '1D': '3B', '1E': '3C', '1G': '3A', '1I': '3F', '1K': '3D', '1L': '3E' },
@@ -582,6 +622,7 @@ export function generateKnockoutBracket(
   const matches: KnockoutMatch[] = [];
 
   for (const def of FIXED_R32) {
+    const sched = MATCH_SCHEDULE[def.matchId];
     matches.push({
       id: def.matchId,
       round: 'R32',
@@ -589,12 +630,16 @@ export function generateKnockoutBracket(
       teamAId: resolveTeamId(def.slotA, allGroupStandings),
       teamBId: def.slotB ? resolveTeamId(def.slotB, allGroupStandings) : null,
       label: `${slotLabel(def.slotA)} vs ${def.slotB ? slotLabel(def.slotB) : 'TBD'}`,
+      date: sched?.date,
+      time: sched?.time,
+      matchNumber: sched?.matchNumber,
     });
   }
 
   for (const def of VARIABLE_R32) {
     const thirdSlotGroup = thirdMapping[def.groupWinnerKey];
     const thirdGroupId = thirdSlotGroup?.replace('3', '') ?? null;
+    const sched = MATCH_SCHEDULE[def.matchId];
 
     matches.push({
       id: def.matchId,
@@ -603,10 +648,14 @@ export function generateKnockoutBracket(
       teamAId: resolveTeamId(def.winnerSlot, allGroupStandings),
       teamBId: thirdGroupId ? resolveTeamId({ position: 3, groupId: thirdGroupId }, allGroupStandings) : null,
       label: `${slotLabel(def.winnerSlot)} vs ${thirdSlotGroup ?? '3?'}`,
+      date: sched?.date,
+      time: sched?.time,
+      matchNumber: sched?.matchNumber,
     });
   }
 
   for (const round of LATER_ROUNDS) {
+    const sched = MATCH_SCHEDULE[round.id];
     matches.push({
       id: round.id,
       round: round.round,
@@ -614,6 +663,9 @@ export function generateKnockoutBracket(
       teamAId: null,
       teamBId: null,
       label: round.label,
+      date: sched?.date,
+      time: sched?.time,
+      matchNumber: sched?.matchNumber,
     });
   }
 

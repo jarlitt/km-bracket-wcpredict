@@ -3,6 +3,7 @@
 import { Input } from '@/components/ui/input'
 import type { Team, GroupMatch } from '@/types'
 import { getTeamById } from '@/lib/data/teams'
+import { useLocalKickoff } from '@/lib/format-kickoff'
 
 interface GroupMatchCardProps {
   match: GroupMatch
@@ -43,6 +44,7 @@ function TeamColumn({
 export function GroupMatchCard({ match, prediction, onPredictionChange, disabled }: GroupMatchCardProps) {
   const teamA = getTeamById(match.teamAId)
   const teamB = getTeamById(match.teamBId)
+  const kickoff = useLocalKickoff(match.date, match.time)
 
   const handleScoreChange = (side: 'A' | 'B', value: string) => {
     if (value.length > 1 && value.startsWith('0')) return
@@ -55,7 +57,14 @@ export function GroupMatchCard({ match, prediction, onPredictionChange, disabled
   }
 
   return (
-    <div className="flex items-stretch p-4 sm:p-5 rounded-xl bg-card/50 border border-border/50 hover:border-border transition-colors">
+    <div className="rounded-xl bg-card/50 border border-border/50 hover:border-border transition-colors overflow-hidden">
+      {kickoff && (
+        <div className="flex items-center justify-center gap-2 px-4 py-1.5 bg-card/40 border-b border-border/30">
+          <span className="text-[11px] text-muted-foreground">{kickoff.date}</span>
+          <span className="text-[11px] font-medium text-muted-foreground/80">{kickoff.time}</span>
+        </div>
+      )}
+      <div className="flex items-stretch p-4 sm:p-5">
       <TeamColumn
         team={teamA}
         score={prediction?.scoreA}
@@ -73,6 +82,7 @@ export function GroupMatchCard({ match, prediction, onPredictionChange, disabled
         onChange={v => handleScoreChange('B', v)}
         disabled={disabled}
       />
+      </div>
     </div>
   )
 }

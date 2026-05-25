@@ -42,7 +42,7 @@ export default function SignupPage() {
         <CardHeader className="text-center">
           <div className="text-3xl mb-2">⚽</div>
           <CardTitle className="text-xl">Create your account</CardTitle>
-          <CardDescription>Join the WC2026 Predictor and start making predictions</CardDescription>
+          <CardDescription>Join the KingMakers WC2026 Predictor</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} noValidate className="space-y-4">

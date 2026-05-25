@@ -16,8 +16,8 @@ export function PredictionBanner() {
             <p className="text-sm font-medium text-emerald-300">Predictions submitted</p>
             <p className="text-xs text-emerald-400/70 mt-0.5">Your predictions are locked in. Good luck!</p>
           </div>
-          <Link href="/predict/review">
-            <Button variant="outline" size="sm" className="shrink-0">View Predictions</Button>
+          <Link href="/predict/summary">
+            <Button variant="outline" size="sm" className="shrink-0">View Summary</Button>
           </Link>
         </div>
       </div>
@@ -39,7 +39,7 @@ export function PredictionBanner() {
   } else if (!allKnockoutDone) {
     nextStep = { label: 'Fill Knockout Bracket', href: '/predict/bracket' }
   } else {
-    nextStep = { label: 'Review & Submit', href: '/predict/review' }
+    nextStep = { label: 'Submit Predictions', href: '/predict/bracket' }
   }
 
   return (

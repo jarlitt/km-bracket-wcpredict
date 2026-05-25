@@ -158,3 +158,11 @@
   display: inline-block;
   animation: dice-shake 8s ease-in-out infinite;
 }
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

@@ -174,83 +174,94 @@ export default function GroupsPage() {
         )}
       </div>
 
-      {/* Sticky block: group selector + mini standings */}
+      {/* Sticky group selector (+ mini standings on mobile only) */}
       <div className="sticky top-35 z-30 -mx-4 px-4 py-3 bg-background/95 backdrop-blur-sm border-b border-border/30 space-y-3">
         <GroupSelector
           selectedGroup={selectedGroup}
           onSelect={setSelectedGroup}
           completedGroups={completedGroups}
         />
-        <MiniStandings groupId={selectedGroup} groupPredictions={groupPredictions} />
+        {/* Mobile-only inline standings */}
+        <div className="lg:hidden">
+          <MiniStandings groupId={selectedGroup} groupPredictions={groupPredictions} />
+        </div>
       </div>
 
-      {/* Match cards */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-bold">Group {selectedGroup}</h2>
-            {groupComplete && (
-              <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-400 text-xs">
-                Complete
-              </Badge>
+      {/* Two-column layout on desktop */}
+      <div className="flex gap-6">
+        {/* Left: match cards (3/4 on desktop) */}
+        <div className="flex-1 min-w-0 space-y-2">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-bold">Group {selectedGroup}</h2>
+              {groupComplete && (
+                <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-400 text-xs">
+                  Complete
+                </Badge>
+              )}
+            </div>
+            {!submitted && (
+              <button
+                onClick={() => autofillGroupDemo(selectedGroup)}
+                className="text-xs font-medium text-pink-400 hover:text-pink-300 transition-colors flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-pink-500/20 hover:border-pink-500/40 hover:bg-pink-500/5"
+              >
+                <span className="dice-shake">🎲</span> Get Lucky
+              </button>
             )}
           </div>
-          {!submitted && (
-            <button
-              onClick={() => autofillGroupDemo(selectedGroup)}
-              className="text-xs font-medium text-pink-400 hover:text-pink-300 transition-colors flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-pink-500/20 hover:border-pink-500/40 hover:bg-pink-500/5"
-            >
-              <span className="dice-shake">🎲</span> Get Lucky
-            </button>
-          )}
+
+          {matches.map(match => (
+            <GroupMatchCard
+              key={match.id}
+              match={match}
+              prediction={groupPredictions[match.id]}
+              onPredictionChange={setGroupPrediction}
+              disabled={submitted}
+            />
+          ))}
+
+          <div className="flex flex-col sm:flex-row gap-2 sm:justify-between sm:items-center pt-2">
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 sm:flex-none"
+                onClick={() => {
+                  const idx = GROUPS.indexOf(selectedGroup as any)
+                  if (idx > 0) setSelectedGroup(GROUPS[idx - 1])
+                }}
+                disabled={selectedGroup === 'A'}
+              >
+                &larr; Group {GROUPS[GROUPS.indexOf(selectedGroup as any) - 1] ?? ''}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 sm:flex-none"
+                onClick={() => {
+                  const idx = GROUPS.indexOf(selectedGroup as any)
+                  if (idx < GROUPS.length - 1) setSelectedGroup(GROUPS[idx + 1])
+                }}
+                disabled={selectedGroup === 'L'}
+              >
+                Group {GROUPS[GROUPS.indexOf(selectedGroup as any) + 1] ?? ''} &rarr;
+              </Button>
+            </div>
+
+            {allComplete && (
+              <Link href="/predict/standings" className="w-full sm:w-auto">
+                <Button className="w-full sm:w-auto">Continue to Standings</Button>
+              </Link>
+            )}
+          </div>
         </div>
 
-        {matches.map(match => (
-          <GroupMatchCard
-            key={match.id}
-            match={match}
-            prediction={groupPredictions[match.id]}
-            onPredictionChange={setGroupPrediction}
-            disabled={submitted}
-          />
-        ))}
-      </div>
-
-      <div className="flex flex-col sm:flex-row gap-2 sm:justify-between sm:items-center">
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1 sm:flex-none"
-            onClick={() => {
-              const idx = GROUPS.indexOf(selectedGroup as any)
-              if (idx > 0) setSelectedGroup(GROUPS[idx - 1])
-            }}
-            disabled={selectedGroup === 'A'}
-          >
-            <span className="sm:hidden">&larr; Prev</span>
-            <span className="hidden sm:inline">&larr; Previous Group</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1 sm:flex-none"
-            onClick={() => {
-              const idx = GROUPS.indexOf(selectedGroup as any)
-              if (idx < GROUPS.length - 1) setSelectedGroup(GROUPS[idx + 1])
-            }}
-            disabled={selectedGroup === 'L'}
-          >
-            <span className="sm:hidden">Next &rarr;</span>
-            <span className="hidden sm:inline">Next Group &rarr;</span>
-          </Button>
+        {/* Right: sticky standings sidebar (desktop only, 1/3 width) */}
+        <div className="hidden lg:block w-1/3 shrink-0">
+          <div className="sticky top-56">
+            <MiniStandings groupId={selectedGroup} groupPredictions={groupPredictions} />
+          </div>
         </div>
-
-        {allComplete && (
-          <Link href="/predict/standings" className="w-full sm:w-auto">
-            <Button className="w-full sm:w-auto">Continue to Standings</Button>
-          </Link>
-        )}
       </div>
     </div>
   )

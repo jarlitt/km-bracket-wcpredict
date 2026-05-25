@@ -30,7 +30,7 @@ export function EmailInput({ value, onChange, error }: EmailInputProps) {
         className={cn(error && 'ring-2 ring-destructive border-destructive')}
       />
       {error && <p className="text-xs text-destructive">{error}</p>}
-      {value.length > 0 && (
+      {value.length > 0 && !value.includes('@') && (
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-[11px] text-muted-foreground">Quick fill:</span>
           {DOMAINS.map(domain => (

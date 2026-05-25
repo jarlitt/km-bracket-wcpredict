@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
 import {
@@ -48,11 +49,12 @@ export default function HomePage() {
     <div className="gradient-bg min-h-screen">
       <PredictionBanner />
       <section className="flex flex-col items-center justify-center px-4 pb-20 pt-24 text-center md:pt-32">
+        <Image src="/km-logo.png" alt="KingMakers" width={48} height={48} className="mb-4" />
         <p className="mb-4 text-sm font-medium uppercase tracking-widest text-muted-foreground">
           FIFA World Cup 2026
         </p>
         <h1 className="max-w-3xl text-4xl font-bold tracking-tight md:text-6xl">
-          World Cup 2026{' '}
+          KingMakers World Cup 2026{' '}
           <span className="bg-linear-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
             Predictor
           </span>
@@ -123,7 +125,7 @@ export default function HomePage() {
       </section>
 
       <footer className="border-t border-border/40 py-8 text-center text-sm text-muted-foreground">
-        <p>WC2026 Predictor — Built for the beautiful game</p>
+        <p>KingMakers WC2026 Predictor — Built for the beautiful game</p>
       </footer>
     </div>
   )
