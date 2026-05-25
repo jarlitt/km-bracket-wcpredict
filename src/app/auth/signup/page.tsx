@@ -22,7 +22,7 @@ export default function SignupPage() {
     const newErrors: typeof errors = {}
     if (!displayName) newErrors.name = 'Name is required'
     if (!email) newErrors.email = 'Email is required'
-    else if (!email.includes('@')) newErrors.email = 'Enter a valid email address'
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) newErrors.email = 'Enter a valid email address'
     if (!password) newErrors.password = 'Password is required'
     else if (password.length < 6) newErrors.password = 'Must be at least 6 characters'
 

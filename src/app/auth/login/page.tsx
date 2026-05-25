@@ -20,7 +20,7 @@ export default function LoginPage() {
     e.preventDefault()
     const newErrors: typeof errors = {}
     if (!email) newErrors.email = 'Email is required'
-    else if (!email.includes('@')) newErrors.email = 'Enter a valid email address'
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) newErrors.email = 'Enter a valid email address'
     if (!password) newErrors.password = 'Password is required'
 
     if (Object.keys(newErrors).length > 0) {
