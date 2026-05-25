@@ -51,7 +51,7 @@ export default function HomePage() {
         </p>
         <h1 className="max-w-3xl text-4xl font-bold tracking-tight md:text-6xl">
           World Cup 2026{' '}
-          <span className="bg-linear-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+          <span className="bg-linear-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
             Predictor
           </span>
         </h1>
@@ -110,7 +110,7 @@ export default function HomePage() {
                     </span>
                     <span className="text-sm">{row.rule}</span>
                   </div>
-                  <span className="text-sm font-semibold text-emerald-400">
+                  <span className="text-sm font-semibold text-blue-400">
                     {row.points}
                   </span>
                 </div>
