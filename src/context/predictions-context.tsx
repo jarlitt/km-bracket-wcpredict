@@ -10,6 +10,9 @@ import {
 } from 'react'
 import { GROUPS, getTeamsByGroup } from '@/lib/data/teams'
 import { GROUP_MATCHES } from '@/lib/data/matches'
+import { calculateGroupStandings } from '@/lib/standings/calculate-standings'
+import { determineBestThirdPlaceTeams } from '@/lib/standings/best-third'
+import { generateKnockoutBracket } from '@/lib/bracket/bracket-structure'
 
 const STORAGE_KEY = 'wc2026-predictions'
 const MATCHES_PER_GROUP = 6
@@ -26,8 +29,10 @@ interface PredictionsContextType extends PredictionsState {
   submitPredictions: () => void
   resetPredictions: () => void
   autofillDemo: () => void
+  autofillKnockoutDemo: () => void
   completedGroups: string[]
   totalGroupPredictions: number
+  totalKnockoutPredictions: number
 }
 
 const defaultState: PredictionsState = {
@@ -144,6 +149,68 @@ export function PredictionsProvider({ children }: { children: ReactNode }) {
     setState(prev => ({ ...prev, groupPredictions, knockoutPredictions: {} }))
   }, [])
 
+  const autofillKnockoutDemo = useCallback(() => {
+    const gp = state.groupPredictions
+    if (Object.keys(gp).length < 72) return
+
+    const allStandings: Record<string, ReturnType<typeof calculateGroupStandings>> = {}
+    for (const group of GROUPS) {
+      allStandings[group] = calculateGroupStandings(group, gp)
+    }
+    const { qualifiedGroups } = determineBestThirdPlaceTeams(allStandings)
+    const matches = generateKnockoutBracket(allStandings, qualifiedGroups)
+
+    const matchMap = new Map(matches.map(m => [m.id, m]))
+    const picks: Record<string, number> = {}
+
+    const bracketTree: Record<string, { a: string; b: string; loser?: boolean }> = {
+      'R16-1': { a: 'R32-1', b: 'R32-2' },
+      'R16-2': { a: 'R32-3', b: 'R32-4' },
+      'R16-3': { a: 'R32-5', b: 'R32-6' },
+      'R16-4': { a: 'R32-7', b: 'R32-8' },
+      'R16-5': { a: 'R32-9', b: 'R32-10' },
+      'R16-6': { a: 'R32-11', b: 'R32-12' },
+      'R16-7': { a: 'R32-13', b: 'R32-14' },
+      'R16-8': { a: 'R32-15', b: 'R32-16' },
+      'QF-1': { a: 'R16-1', b: 'R16-2' },
+      'QF-2': { a: 'R16-3', b: 'R16-4' },
+      'QF-3': { a: 'R16-5', b: 'R16-6' },
+      'QF-4': { a: 'R16-7', b: 'R16-8' },
+      'SF-1': { a: 'QF-1', b: 'QF-2' },
+      'SF-2': { a: 'QF-3', b: 'QF-4' },
+      'F': { a: 'SF-1', b: 'SF-2' },
+      '3RD': { a: 'SF-1', b: 'SF-2', loser: true },
+    }
+
+    for (const m of matches) {
+      if (m.round === 'R32' && m.teamAId) {
+        picks[m.id] = m.teamAId
+      }
+    }
+
+    const rounds = ['R16', 'QF', 'SF', 'F', '3RD'] as const
+    for (const round of rounds) {
+      const roundMatches = Object.entries(bracketTree).filter(([id]) => id.startsWith(round))
+      for (const [matchId, src] of roundMatches) {
+        const teamA = src.loser
+          ? (picks[src.a] === matchMap.get(src.a)?.teamAId ? matchMap.get(src.a)?.teamBId : matchMap.get(src.a)?.teamAId)
+          : picks[src.a]
+        const teamB = src.loser
+          ? (picks[src.b] === matchMap.get(src.b)?.teamAId ? matchMap.get(src.b)?.teamBId : matchMap.get(src.b)?.teamAId)
+          : picks[src.b]
+
+        const m = matchMap.get(matchId)
+        if (m) {
+          m.teamAId = teamA ?? null
+          m.teamBId = teamB ?? null
+        }
+        if (teamA) picks[matchId] = teamA
+      }
+    }
+
+    setState(prev => ({ ...prev, knockoutPredictions: picks }))
+  }, [state.groupPredictions])
+
   const completedGroups = GROUPS.filter((group) => {
     const groupIndex = GROUPS.indexOf(group)
     const startMatchId = groupIndex * MATCHES_PER_GROUP + 1
@@ -154,6 +221,7 @@ export function PredictionsProvider({ children }: { children: ReactNode }) {
   })
 
   const totalGroupPredictions = Object.keys(state.groupPredictions).length
+  const totalKnockoutPredictions = Object.keys(state.knockoutPredictions).length
 
   return (
     <PredictionsContext value={{
@@ -163,8 +231,10 @@ export function PredictionsProvider({ children }: { children: ReactNode }) {
       submitPredictions,
       resetPredictions,
       autofillDemo,
+      autofillKnockoutDemo,
       completedGroups,
       totalGroupPredictions,
+      totalKnockoutPredictions,
     }}>
       {children}
     </PredictionsContext>

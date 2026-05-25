@@ -8,10 +8,15 @@ function compareThirdPlace(a: TeamStanding, b: TeamStanding): number {
   return a.team.name.localeCompare(b.team.name);
 }
 
+export interface ThirdPlaceEntry {
+  groupId: string;
+  standing: TeamStanding;
+}
+
 export function determineBestThirdPlaceTeams(
   allGroupStandings: Record<string, TeamStanding[]>,
-): { qualifiedGroups: string[]; thirdPlaceTeams: TeamStanding[] } {
-  const thirdPlaceByGroup: { groupId: string; standing: TeamStanding }[] = [];
+): { qualifiedGroups: string[]; thirdPlaceTeams: TeamStanding[]; allThirdPlaceTeams: ThirdPlaceEntry[] } {
+  const thirdPlaceByGroup: ThirdPlaceEntry[] = [];
 
   for (const groupId of GROUPS) {
     const standings = allGroupStandings[groupId];
@@ -29,5 +34,5 @@ export function determineBestThirdPlaceTeams(
 
   const thirdPlaceTeams = qualified.map((entry) => entry.standing);
 
-  return { qualifiedGroups, thirdPlaceTeams };
+  return { qualifiedGroups, thirdPlaceTeams, allThirdPlaceTeams: thirdPlaceByGroup };
 }

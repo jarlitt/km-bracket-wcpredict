@@ -3,7 +3,9 @@
 import { useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { GroupStandingsTable } from '@/components/prediction/group-standings-table'
+import { cn } from '@/lib/utils'
 import { usePredictions } from '@/context/predictions-context'
 import { GROUPS } from '@/lib/data/teams'
 import { calculateGroupStandings } from '@/lib/standings/calculate-standings'
@@ -21,7 +23,7 @@ export default function StandingsPage() {
     return standings
   }, [groupPredictions])
 
-  const { qualifiedGroups } = useMemo(
+  const { qualifiedGroups, thirdPlaceTeams, allThirdPlaceTeams } = useMemo(
     () => determineBestThirdPlaceTeams(allStandings),
     [allStandings]
   )
@@ -72,24 +74,76 @@ export default function StandingsPage() {
         ))}
       </div>
 
-      <div className="rounded-xl border border-border/50 bg-card/30 p-4">
-        <h3 className="font-bold text-sm mb-3">Advancement Summary</h3>
-        <div className="flex flex-wrap gap-4 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-emerald-500/40" />
-            <span className="text-muted-foreground">Top 2 per group (24 teams)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-blue-500/40" />
-            <span className="text-muted-foreground">
-              Best 3rd-place ({qualifiedGroups.length}/8):
-              {qualifiedGroups.length > 0 && (
-                <span className="ml-1 text-blue-400">
-                  {qualifiedGroups.map(g => `Group ${g}`).join(', ')}
-                </span>
-              )}
-            </span>
-          </div>
+      <div className="rounded-xl border border-border/50 bg-card/50 overflow-hidden">
+        <div className="px-4 py-2.5 bg-card/80 border-b border-border/50 flex items-center justify-between">
+          <h3 className="font-bold text-sm">3rd-Place Ranking</h3>
+          <span className="text-xs text-muted-foreground">Top 8 advance to Round of 32</span>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow className="border-border/30 hover:bg-transparent">
+              <TableHead className="w-8 text-center text-xs">#</TableHead>
+              <TableHead className="text-xs">Team</TableHead>
+              <TableHead className="w-14 text-center text-xs">Group</TableHead>
+              <TableHead className="w-8 text-center text-xs">P</TableHead>
+              <TableHead className="w-8 text-center text-xs">W</TableHead>
+              <TableHead className="w-8 text-center text-xs">D</TableHead>
+              <TableHead className="w-8 text-center text-xs">L</TableHead>
+              <TableHead className="w-10 text-center text-xs">GD</TableHead>
+              <TableHead className="w-10 text-center text-xs">GF</TableHead>
+              <TableHead className="w-10 text-center text-xs font-bold">Pts</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {allThirdPlaceTeams.map((entry, index) => {
+              const qualifies = index < 8
+              return (
+                <TableRow
+                  key={entry.groupId}
+                  className={cn(
+                    'border-border/20',
+                    qualifies && 'bg-blue-500/5',
+                  )}
+                >
+                  <TableCell className="text-center text-xs font-medium">
+                    {qualifies ? (
+                      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-400">
+                        {index + 1}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">{index + 1}</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">{entry.standing.team.flag}</span>
+                      <span className="text-xs sm:text-sm font-medium">{entry.standing.team.name}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Badge variant="secondary" className="text-[10px] px-1.5">{entry.groupId}</Badge>
+                  </TableCell>
+                  <TableCell className="text-center text-xs">{entry.standing.played}</TableCell>
+                  <TableCell className="text-center text-xs">{entry.standing.won}</TableCell>
+                  <TableCell className="text-center text-xs">{entry.standing.drawn}</TableCell>
+                  <TableCell className="text-center text-xs">{entry.standing.lost}</TableCell>
+                  <TableCell className="text-center text-xs">
+                    {entry.standing.goalDifference > 0 ? '+' : ''}{entry.standing.goalDifference}
+                  </TableCell>
+                  <TableCell className="text-center text-xs">{entry.standing.goalsFor}</TableCell>
+                  <TableCell className="text-center text-sm font-bold">{entry.standing.points}</TableCell>
+                </TableRow>
+              )
+            })}
+          </TableBody>
+        </Table>
+        <div className="px-4 py-2 border-t border-border/30 flex gap-3 text-[10px] text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-blue-500/40" /> Advances to Round of 32
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-muted" /> Eliminated
+          </span>
         </div>
       </div>
 

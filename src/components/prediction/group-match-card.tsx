@@ -11,14 +11,11 @@ interface GroupMatchCardProps {
   disabled?: boolean
 }
 
-function TeamDisplay({ team, side }: { team: Team; side: 'left' | 'right' }) {
+function TeamDisplay({ team }: { team: Team }) {
   return (
-    <div className={`flex items-center gap-2 min-w-0 ${side === 'right' ? 'flex-row-reverse' : ''}`}>
-      <span className="text-xl sm:text-2xl shrink-0">{team.flag}</span>
-      <div className={`min-w-0 ${side === 'right' ? 'text-right' : ''}`}>
-        <p className="font-medium text-sm sm:text-base truncate">{team.name}</p>
-        <p className="text-[10px] text-muted-foreground">{team.code}</p>
-      </div>
+    <div className="flex flex-col items-center gap-1 w-20 sm:w-24">
+      <span className="text-2xl sm:text-3xl">{team.flag}</span>
+      <p className="font-medium text-xs sm:text-sm text-center leading-tight">{team.name}</p>
     </div>
   )
 }
@@ -37,12 +34,10 @@ export function GroupMatchCard({ match, prediction, onPredictionChange, disabled
   }
 
   return (
-    <div className="flex items-center gap-2 sm:gap-4 p-3 sm:p-4 rounded-xl bg-card/50 border border-border/50 hover:border-border transition-colors">
-      <div className="flex-1 min-w-0">
-        <TeamDisplay team={teamA} side="left" />
-      </div>
+    <div className="flex items-center justify-center gap-4 sm:gap-6 p-4 sm:p-5 rounded-xl bg-card/50 border border-border/50 hover:border-border transition-colors">
+      <TeamDisplay team={teamA} />
 
-      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+      <div className="flex items-center gap-2">
         <Input
           type="number"
           min={0}
@@ -50,7 +45,7 @@ export function GroupMatchCard({ match, prediction, onPredictionChange, disabled
           value={prediction?.scoreA ?? ''}
           onChange={e => handleScoreChange('A', e.target.value)}
           disabled={disabled}
-          className="w-10 sm:w-12 h-10 sm:h-12 text-center text-lg font-bold p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          className="w-12 h-12 text-center text-xl font-bold p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           placeholder="-"
         />
         <span className="text-muted-foreground font-bold text-lg">:</span>
@@ -61,14 +56,12 @@ export function GroupMatchCard({ match, prediction, onPredictionChange, disabled
           value={prediction?.scoreB ?? ''}
           onChange={e => handleScoreChange('B', e.target.value)}
           disabled={disabled}
-          className="w-10 sm:w-12 h-10 sm:h-12 text-center text-lg font-bold p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          className="w-12 h-12 text-center text-xl font-bold p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           placeholder="-"
         />
       </div>
 
-      <div className="flex-1 min-w-0">
-        <TeamDisplay team={teamB} side="right" />
-      </div>
+      <TeamDisplay team={teamB} />
     </div>
   )
 }

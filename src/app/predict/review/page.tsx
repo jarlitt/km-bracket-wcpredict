@@ -22,6 +22,7 @@ export default function ReviewPage() {
     submitPredictions,
     completedGroups,
     totalGroupPredictions,
+    totalKnockoutPredictions,
   } = usePredictions()
 
   const allStandings = useMemo(() => {
@@ -37,9 +38,9 @@ export default function ReviewPage() {
     [allStandings]
   )
 
-  const totalKnockoutPicks = Object.keys(knockoutPredictions).length
   const allGroupsComplete = completedGroups.length === 12
-  const canSubmit = allGroupsComplete && totalKnockoutPicks >= 31 && !submitted
+  const allKnockoutComplete = totalKnockoutPredictions >= 32
+  const canSubmit = allGroupsComplete && allKnockoutComplete && !submitted
 
   const handleSubmit = () => {
     if (!canSubmit) return
@@ -67,6 +68,24 @@ export default function ReviewPage() {
         </div>
       )}
 
+      {!submitted && !canSubmit && (allGroupsComplete || totalKnockoutPredictions > 0) && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+          <p className="text-sm text-amber-300">
+            {!allGroupsComplete && `Complete all group predictions (${totalGroupPredictions}/72). `}
+            {!allKnockoutComplete && `Complete all knockout picks (${totalKnockoutPredictions}/32). `}
+            You need both to submit.
+          </p>
+          <div className="flex gap-2 mt-2">
+            {!allGroupsComplete && (
+              <Link href="/predict/groups"><Button variant="outline" size="sm">Go to Groups</Button></Link>
+            )}
+            {!allKnockoutComplete && (
+              <Link href="/predict/bracket"><Button variant="outline" size="sm">Go to Bracket</Button></Link>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="bg-card/50 border-border/50">
           <CardHeader className="pb-2">
@@ -87,8 +106,8 @@ export default function ReviewPage() {
             <CardTitle className="text-sm text-muted-foreground">Knockout Picks</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{totalKnockoutPicks}/32</div>
-            {totalKnockoutPicks >= 31 ? (
+            <div className="text-3xl font-bold">{totalKnockoutPredictions}/32</div>
+            {allKnockoutComplete ? (
               <Badge className="mt-2 bg-emerald-500/20 text-emerald-400">Complete</Badge>
             ) : (
               <Badge variant="secondary" className="mt-2">In Progress</Badge>

@@ -18,6 +18,8 @@ export default function BracketPage() {
     setKnockoutPrediction,
     completedGroups,
     submitted,
+    autofillKnockoutDemo,
+    totalKnockoutPredictions,
   } = usePredictions()
 
   const allStandings = useMemo(() => {
@@ -90,7 +92,6 @@ export default function BracketPage() {
   }, [setKnockoutPrediction])
 
   const allComplete = completedGroups.length === 12
-  const totalKnockoutPicks = Object.keys(knockoutPredictions).length
 
   if (!allComplete) {
     return (
@@ -114,10 +115,15 @@ export default function BracketPage() {
         <div>
           <h1 className="text-2xl font-bold">Knockout Bracket</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Click on a team to pick the winner. Picks: {totalKnockoutPicks}/32
+            Click on a team to pick the winner. Picks: {totalKnockoutPredictions}/32
           </p>
         </div>
         <div className="flex gap-2">
+          {!submitted && (
+            <Button variant="outline" size="sm" onClick={autofillKnockoutDemo} className="text-xs">
+              Autofill Demo
+            </Button>
+          )}
           <Link href="/predict/standings">
             <Button variant="outline" size="sm">Back to Standings</Button>
           </Link>

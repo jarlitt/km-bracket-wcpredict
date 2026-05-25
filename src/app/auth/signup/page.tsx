@@ -6,31 +6,34 @@ import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { EmailInput } from '@/components/auth/email-input'
 import { useAuth } from '@/context/auth-context'
+import { cn } from '@/lib/utils'
 
 export default function SignupPage() {
   const { signup } = useAuth()
   const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
+  const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string; general?: string }>({})
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
-    if (!displayName || !email || !password) {
-      setError('Please fill in all fields')
+    const newErrors: typeof errors = {}
+    if (!displayName) newErrors.name = 'Name is required'
+    if (!email) newErrors.email = 'Email is required'
+    else if (!email.includes('@')) newErrors.email = 'Enter a valid email address'
+    if (!password) newErrors.password = 'Password is required'
+    else if (password.length < 6) newErrors.password = 'Must be at least 6 characters'
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
       return
     }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters')
-      return
-    }
-    try {
-      await signup(email, password, displayName)
-    } catch {
-      setError('Signup failed. Please try again.')
-    }
+
+    setErrors({})
+    const errorMsg = await signup(email, password, displayName)
+    if (errorMsg) setErrors({ general: errorMsg })
   }
 
   return (
@@ -42,7 +45,7 @@ export default function SignupPage() {
           <CardDescription>Join the WC2026 Predictor and start making predictions</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="displayName">Display name</Label>
               <Input
@@ -50,21 +53,12 @@ export default function SignupPage() {
                 type="text"
                 placeholder="Your name"
                 value={displayName}
-                onChange={e => setDisplayName(e.target.value)}
-                required
+                onChange={e => { setDisplayName(e.target.value); setErrors(prev => ({ ...prev, name: undefined })) }}
+                className={cn(errors.name && 'ring-2 ring-destructive border-destructive')}
               />
+              {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-              />
-            </div>
+            <EmailInput value={email} onChange={v => { setEmail(v); setErrors(prev => ({ ...prev, email: undefined })) }} error={errors.email} />
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
@@ -72,11 +66,12 @@ export default function SignupPage() {
                 type="password"
                 placeholder="••••••••"
                 value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
+                onChange={e => { setPassword(e.target.value); setErrors(prev => ({ ...prev, password: undefined })) }}
+                className={cn(errors.password && 'ring-2 ring-destructive border-destructive')}
               />
+              {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {errors.general && <p className="text-sm text-destructive">{errors.general}</p>}
             <button type="submit" className={buttonVariants({ className: 'w-full' })}>
               Sign up
             </button>

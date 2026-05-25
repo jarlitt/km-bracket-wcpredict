@@ -6,26 +6,31 @@ import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { EmailInput } from '@/components/auth/email-input'
 import { useAuth } from '@/context/auth-context'
+import { cn } from '@/lib/utils'
 
 export default function LoginPage() {
   const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
+  const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({})
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
-    if (!email || !password) {
-      setError('Please fill in all fields')
+    const newErrors: typeof errors = {}
+    if (!email) newErrors.email = 'Email is required'
+    else if (!email.includes('@')) newErrors.email = 'Enter a valid email address'
+    if (!password) newErrors.password = 'Password is required'
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
       return
     }
-    try {
-      await login(email, password)
-    } catch {
-      setError('Login failed. Please try again.')
-    }
+
+    setErrors({})
+    const errorMsg = await login(email, password)
+    if (errorMsg) setErrors({ general: errorMsg })
   }
 
   return (
@@ -37,18 +42,8 @@ export default function LoginPage() {
           <CardDescription>Log in to your WC2026 Predictor account</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-              />
-            </div>
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
+            <EmailInput value={email} onChange={v => { setEmail(v); setErrors(prev => ({ ...prev, email: undefined })) }} error={errors.email} />
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
@@ -56,11 +51,12 @@ export default function LoginPage() {
                 type="password"
                 placeholder="••••••••"
                 value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
+                onChange={e => { setPassword(e.target.value); setErrors(prev => ({ ...prev, password: undefined })) }}
+                className={cn(errors.password && 'ring-2 ring-destructive border-destructive')}
               />
+              {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {errors.general && <p className="text-sm text-destructive">{errors.general}</p>}
             <button type="submit" className={buttonVariants({ className: 'w-full' })}>
               Log in
             </button>

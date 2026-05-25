@@ -9,8 +9,9 @@ import {
   type ReactNode,
 } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import type { User as SupabaseUser } from '@supabase/supabase-js'
 
-const STORAGE_KEY = 'wc2026-auth'
 const PUBLIC_PATHS = ['/auth/login', '/auth/signup']
 
 interface User {
@@ -22,24 +23,18 @@ interface User {
 interface AuthContextType {
   user: User | null
   loading: boolean
-  login: (email: string, password: string) => Promise<void>
-  signup: (email: string, password: string, displayName: string) => Promise<void>
+  login: (email: string, password: string) => Promise<string | null>
+  signup: (email: string, password: string, displayName: string) => Promise<string | null>
   logout: () => void
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
-function generateId() {
-  return Math.random().toString(36).substring(2) + Date.now().toString(36)
-}
-
-function loadUser(): User | null {
-  if (typeof window === 'undefined') return null
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    return stored ? (JSON.parse(stored) as User) : null
-  } catch {
-    return null
+function mapSupabaseUser(u: SupabaseUser): User {
+  return {
+    id: u.id,
+    email: u.email ?? '',
+    displayName: u.user_metadata?.display_name ?? u.email?.split('@')[0] ?? 'User',
   }
 }
 
@@ -48,11 +43,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const router = useRouter()
   const pathname = usePathname()
+  const supabase = createClient()
 
   useEffect(() => {
-    setUser(loadUser())
-    setLoading(false)
-  }, [])
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user ? mapSupabaseUser(data.user) : null)
+      setLoading(false)
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ? mapSupabaseUser(session.user) : null)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [supabase.auth])
 
   useEffect(() => {
     if (loading) return
@@ -65,38 +69,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user, loading, pathname, router])
 
-  const login = useCallback(async (email: string, _password: string) => {
-    const existingUsers = JSON.parse(localStorage.getItem('wc2026-users') || '[]') as User[]
-    const found = existingUsers.find(u => u.email === email)
+  const login = useCallback(async (email: string, password: string): Promise<string | null> => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) return error.message
+    router.replace('/')
+    return null
+  }, [supabase.auth, router])
 
-    const newUser: User = found ?? {
-      id: generateId(),
+  const signup = useCallback(async (email: string, password: string, displayName: string): Promise<string | null> => {
+    const { error } = await supabase.auth.signUp({
       email,
-      displayName: email.split('@')[0],
-    }
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newUser))
-    setUser(newUser)
+      password,
+      options: { data: { display_name: displayName } },
+    })
+    if (error) return error.message
     router.replace('/')
-  }, [router])
+    return null
+  }, [supabase.auth, router])
 
-  const signup = useCallback(async (email: string, _password: string, displayName: string) => {
-    const newUser: User = { id: generateId(), email, displayName }
-
-    const existingUsers = JSON.parse(localStorage.getItem('wc2026-users') || '[]') as User[]
-    existingUsers.push(newUser)
-    localStorage.setItem('wc2026-users', JSON.stringify(existingUsers))
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newUser))
-    setUser(newUser)
-    router.replace('/')
-  }, [router])
-
-  const logout = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY)
+  const logout = useCallback(async () => {
+    await supabase.auth.signOut()
     setUser(null)
     router.replace('/auth/login')
-  }, [router])
+  }, [supabase.auth, router])
 
   const isPublic = PUBLIC_PATHS.some(p => pathname.startsWith(p))
 
