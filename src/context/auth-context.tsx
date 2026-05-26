@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user && !isPublic) {
       router.replace('/auth/login')
     }
-    if (user && isPublic) {
+    if (user && isPublic && !pathname.startsWith('/auth/reset-password')) {
       router.replace('/')
     }
   }, [user, loading, pathname, router])
