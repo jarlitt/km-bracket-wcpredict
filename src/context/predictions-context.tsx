@@ -13,6 +13,8 @@ import { GROUP_MATCHES } from '@/lib/data/matches'
 import { calculateGroupStandings } from '@/lib/standings/calculate-standings'
 import { determineBestThirdPlaceTeams } from '@/lib/standings/best-third'
 import { generateKnockoutBracket } from '@/lib/bracket/bracket-structure'
+import { useAuth } from '@/context/auth-context'
+import { loadPredictions, submitPredictionsToDb } from '@/app/actions/predictions'
 
 const STORAGE_KEY = 'wc2026-predictions'
 const MATCHES_PER_GROUP = 6
@@ -26,7 +28,7 @@ interface PredictionsState {
 interface PredictionsContextType extends PredictionsState {
   setGroupPrediction: (matchId: number, scoreA: number, scoreB: number) => void
   setKnockoutPrediction: (matchId: string, winnerId: number) => void
-  submitPredictions: () => void
+  submitPredictions: () => Promise<string | null>
   resetPredictions: () => void
   autofillDemo: () => void
   autofillAllOneZero: () => void
@@ -35,6 +37,8 @@ interface PredictionsContextType extends PredictionsState {
   completedGroups: string[]
   totalGroupPredictions: number
   totalKnockoutPredictions: number
+  submitting: boolean
+  dbLoaded: boolean
 }
 
 const defaultState: PredictionsState = {
@@ -65,20 +69,51 @@ function saveToStorage(state: PredictionsState) {
   }
 }
 
-function getGroupForMatch(matchId: number): string | null {
-  const groupIndex = Math.floor((matchId - 1) / MATCHES_PER_GROUP)
-  return GROUPS[groupIndex] ?? null
-}
-
 export function PredictionsProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<PredictionsState>(defaultState)
   const [hydrated, setHydrated] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [dbLoaded, setDbLoaded] = useState(false)
+  const { user } = useAuth()
 
+  // Hydrate from localStorage first, then override with DB data if available
   useEffect(() => {
     setState(loadFromStorage())
     setHydrated(true)
   }, [])
 
+  useEffect(() => {
+    if (!user || dbLoaded) return
+
+    loadPredictions().then((dbData) => {
+      if (!dbData) {
+        setDbLoaded(true)
+        return
+      }
+
+      const hasDbData =
+        Object.keys(dbData.groupPredictions).length > 0 ||
+        Object.keys(dbData.knockoutPredictions).length > 0 ||
+        dbData.submitted
+
+      if (hasDbData) {
+        setState((prev) => ({
+          groupPredictions:
+            Object.keys(dbData.groupPredictions).length > 0
+              ? dbData.groupPredictions
+              : prev.groupPredictions,
+          knockoutPredictions:
+            Object.keys(dbData.knockoutPredictions).length > 0
+              ? dbData.knockoutPredictions
+              : prev.knockoutPredictions,
+          submitted: dbData.submitted || prev.submitted,
+        }))
+      }
+      setDbLoaded(true)
+    })
+  }, [user, dbLoaded])
+
+  // Persist drafts to localStorage
   useEffect(() => {
     if (hydrated) saveToStorage(state)
   }, [state, hydrated])
@@ -109,9 +144,22 @@ export function PredictionsProvider({ children }: { children: ReactNode }) {
     []
   )
 
-  const submitPredictions = useCallback(() => {
-    setState((prev) => ({ ...prev, submitted: true }))
-  }, [])
+  const submitPredictions = useCallback(async (): Promise<string | null> => {
+    setSubmitting(true)
+    try {
+      const result = await submitPredictionsToDb(
+        state.groupPredictions,
+        state.knockoutPredictions
+      )
+      if (!result.success) {
+        return result.error ?? 'Failed to submit predictions'
+      }
+      setState((prev) => ({ ...prev, submitted: true }))
+      return null
+    } finally {
+      setSubmitting(false)
+    }
+  }, [state.groupPredictions, state.knockoutPredictions])
 
   const resetPredictions = useCallback(() => {
     setState(defaultState)
@@ -290,6 +338,8 @@ export function PredictionsProvider({ children }: { children: ReactNode }) {
       completedGroups,
       totalGroupPredictions,
       totalKnockoutPredictions,
+      submitting,
+      dbLoaded,
     }}>
       {children}
     </PredictionsContext>

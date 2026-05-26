@@ -22,6 +22,7 @@ export default function BracketPage() {
     setKnockoutPrediction,
     completedGroups,
     submitted,
+    submitting,
     submitPredictions,
     totalGroupPredictions,
     totalKnockoutPredictions,
@@ -105,10 +106,10 @@ export default function BracketPage() {
 
   const allGroupsComplete = completedGroups.length === 12
   const allKnockoutComplete = totalKnockoutPredictions >= 32
-  const canSubmit = allGroupsComplete && allKnockoutComplete && !submitted
+  const canSubmit = allGroupsComplete && allKnockoutComplete && !submitted && !submitting
 
-  const handleSubmit = () => {
-    if (submitted) return
+  const handleSubmit = async () => {
+    if (submitted || submitting) return
 
     if (!allGroupsComplete) {
       toast.error(`Complete all group predictions first (${totalGroupPredictions}/72)`)
@@ -127,7 +128,12 @@ export default function BracketPage() {
       return
     }
 
-    submitPredictions()
+    const error = await submitPredictions()
+    if (error) {
+      toast.error(error)
+      return
+    }
+
     toast.success('Predictions submitted and locked!')
     router.push('/predict/summary')
   }
@@ -170,9 +176,10 @@ export default function BracketPage() {
               <Button
                 size="sm"
                 onClick={handleSubmit}
+                disabled={submitting}
                 className={canSubmit ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
               >
-                Submit Predictions
+                {submitting ? 'Submitting...' : 'Submit Predictions'}
               </Button>
               <button
                 type="button"
@@ -206,9 +213,10 @@ export default function BracketPage() {
           <Button
             size="sm"
             onClick={handleSubmit}
+            disabled={submitting}
             className={canSubmit ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
           >
-            Submit Predictions
+            {submitting ? 'Submitting...' : 'Submit Predictions'}
           </Button>
         )}
       </div>
