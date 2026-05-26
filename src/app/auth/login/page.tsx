@@ -45,7 +45,12 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} noValidate className="space-y-4">
             <EmailInput value={email} onChange={v => { setEmail(v); setErrors(prev => ({ ...prev, email: undefined })) }} error={errors.email} />
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                <Link href="/auth/forgot-password" className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4">
+                  Forgot password?
+                </Link>
+              </div>
               <Input
                 id="password"
                 type="password"

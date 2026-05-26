@@ -12,7 +12,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 
-const PUBLIC_PATHS = ['/auth/login', '/auth/signup']
+const PUBLIC_PATHS = ['/auth/login', '/auth/signup', '/auth/forgot-password', '/auth/reset-password']
 
 interface User {
   id: string
@@ -26,6 +26,8 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<string | null>
   signup: (email: string, password: string, displayName: string) => Promise<string | null>
   logout: () => void
+  resetPasswordRequest: (email: string) => Promise<string | null>
+  updatePassword: (password: string) => Promise<string | null>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -51,8 +53,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ? mapSupabaseUser(session.user) : null)
+      if (event === 'PASSWORD_RECOVERY') {
+        router.replace('/auth/reset-password')
+      }
     })
 
     return () => subscription.unsubscribe()
@@ -93,6 +98,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.replace('/auth/login')
   }, [supabase.auth, router])
 
+  const resetPasswordRequest = useCallback(async (email: string): Promise<string | null> => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    })
+    if (error) return error.message
+    return null
+  }, [supabase.auth])
+
+  const updatePassword = useCallback(async (password: string): Promise<string | null> => {
+    const { error } = await supabase.auth.updateUser({ password })
+    if (error) return error.message
+    return null
+  }, [supabase.auth])
+
   const isPublic = PUBLIC_PATHS.some(p => pathname.startsWith(p))
 
   if (loading) {
@@ -108,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext value={{ user, loading, login, signup, logout }}>
+    <AuthContext value={{ user, loading, login, signup, logout, resetPasswordRequest, updatePassword }}>
       {children}
     </AuthContext>
   )

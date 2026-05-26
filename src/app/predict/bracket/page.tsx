@@ -179,7 +179,7 @@ export default function BracketPage() {
                 onClick={autofillKnockoutDemo}
                 className="text-xs font-medium text-pink-400 hover:text-pink-300 transition-colors flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-pink-500/20 hover:border-pink-500/40 hover:bg-pink-500/5"
               >
-                <span className="dice-shake">🎲</span> Get Lucky
+                <span className="dice-shake">🎲</span> Auto predict
               </button>
             </>
           )}
