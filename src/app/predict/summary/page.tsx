@@ -165,47 +165,48 @@ export default function SummaryPage() {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
-        <div className="flex-1 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <span className="text-2xl">🏆</span>
-            <div>
-              <p className="text-xs text-emerald-400/70 uppercase tracking-wider font-semibold">Your Predicted Champion</p>
-              {finalTeam ? (
-                <p className="text-xl font-bold text-emerald-300 flex items-center gap-2 mt-0.5">
-                  <span className="text-2xl">{finalTeam.flag}</span> {finalTeam.name}
-                </p>
-              ) : (
-                <p className="text-muted-foreground text-sm">Not picked</p>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 pt-3 border-t border-emerald-500/20">
-            <div>
-              <p className="text-[10px] text-emerald-400/60 uppercase tracking-wider mb-1">Runner-up</p>
-              {runnerUp ? (
-                <p className="text-sm font-medium flex items-center gap-1.5"><span>{runnerUp.flag}</span> {runnerUp.name}</p>
-              ) : <p className="text-xs text-muted-foreground">-</p>}
-            </div>
-            <div>
-              <p className="text-[10px] text-emerald-400/60 uppercase tracking-wider mb-1">3rd Place</p>
-              {thirdTeam ? (
-                <p className="text-sm font-medium flex items-center gap-1.5"><span>{thirdTeam.flag}</span> {thirdTeam.name}</p>
-              ) : <p className="text-xs text-muted-foreground">-</p>}
-            </div>
+        <div className="flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
+          <span className="text-2xl">🏆</span>
+          <div>
+            <p className="text-[10px] text-emerald-400/70 uppercase tracking-wider font-semibold">Champion</p>
+            {finalTeam ? (
+              <p className="text-base font-bold text-emerald-300 flex items-center gap-1.5">
+                <span className="text-lg">{finalTeam.flag}</span> {finalTeam.name}
+              </p>
+            ) : (
+              <p className="text-muted-foreground text-sm">-</p>
+            )}
           </div>
         </div>
 
-        <div className="flex flex-row sm:flex-col gap-3 sm:w-48">
-          <div className="flex-1 rounded-xl border border-border/50 bg-card/50 p-4 text-center">
-            <p className="text-xs text-muted-foreground mb-1">Group Predictions</p>
-            <div className="text-2xl font-bold">{totalGroupPredictions}/72</div>
-            <Badge className="mt-1.5 bg-emerald-500/20 text-emerald-400">Complete</Badge>
+        <div className="flex items-center gap-3 rounded-xl border border-border/50 bg-card/50 px-4 py-3">
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Runner-up</p>
+            {runnerUp ? (
+              <p className="text-sm font-medium flex items-center gap-1.5"><span>{runnerUp.flag}</span> {runnerUp.name}</p>
+            ) : <p className="text-xs text-muted-foreground">-</p>}
           </div>
-          <div className="flex-1 rounded-xl border border-border/50 bg-card/50 p-4 text-center">
-            <p className="text-xs text-muted-foreground mb-1">Knockout Picks</p>
-            <div className="text-2xl font-bold">{totalKnockoutPredictions}/32</div>
-            <Badge className="mt-1.5 bg-emerald-500/20 text-emerald-400">Complete</Badge>
+        </div>
+
+        <div className="flex items-center gap-3 rounded-xl border border-border/50 bg-card/50 px-4 py-3">
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">3rd Place</p>
+            {thirdTeam ? (
+              <p className="text-sm font-medium flex items-center gap-1.5"><span>{thirdTeam.flag}</span> {thirdTeam.name}</p>
+            ) : <p className="text-xs text-muted-foreground">-</p>}
+          </div>
+        </div>
+
+        <div className="flex gap-3 sm:ml-auto">
+          <div className="rounded-xl border border-border/50 bg-card/50 px-4 py-3 text-center">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Groups</p>
+            <div className="text-lg font-bold leading-tight">{totalGroupPredictions}/72</div>
+            <Badge className="mt-1 bg-emerald-500/20 text-emerald-400 text-[10px]">Complete</Badge>
+          </div>
+          <div className="rounded-xl border border-border/50 bg-card/50 px-4 py-3 text-center">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Knockout</p>
+            <div className="text-lg font-bold leading-tight">{totalKnockoutPredictions}/32</div>
+            <Badge className="mt-1 bg-emerald-500/20 text-emerald-400 text-[10px]">Complete</Badge>
           </div>
         </div>
       </div>
