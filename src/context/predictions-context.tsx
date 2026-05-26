@@ -16,8 +16,12 @@ import { generateKnockoutBracket } from '@/lib/bracket/bracket-structure'
 import { useAuth } from '@/context/auth-context'
 import { loadPredictions, submitPredictionsToDb } from '@/app/actions/predictions'
 
-const STORAGE_KEY = 'wc2026-predictions'
+const STORAGE_PREFIX = 'wc2026-predictions'
 const MATCHES_PER_GROUP = 6
+
+function storageKey(userId: string) {
+  return `${STORAGE_PREFIX}-${userId}`
+}
 
 interface PredictionsState {
   groupPredictions: Record<number, { scoreA: number; scoreB: number }>
@@ -49,21 +53,23 @@ const defaultState: PredictionsState = {
 
 const PredictionsContext = createContext<PredictionsContextType | null>(null)
 
-function loadFromStorage(): PredictionsState {
+function loadFromStorage(userId: string): PredictionsState {
   if (typeof window === 'undefined') return defaultState
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
+    const stored = localStorage.getItem(storageKey(userId))
     if (!stored) return defaultState
-    return JSON.parse(stored) as PredictionsState
+    const parsed = JSON.parse(stored) as PredictionsState
+    // Never trust localStorage for submitted status — DB is source of truth
+    return { ...parsed, submitted: false }
   } catch {
     return defaultState
   }
 }
 
-function saveToStorage(state: PredictionsState) {
+function saveToStorage(userId: string, state: PredictionsState) {
   if (typeof window === 'undefined') return
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+    localStorage.setItem(storageKey(userId), JSON.stringify(state))
   } catch {
     // Storage full or unavailable
   }
@@ -74,14 +80,35 @@ export function PredictionsProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [dbLoaded, setDbLoaded] = useState(false)
+  const [activeUserId, setActiveUserId] = useState<string | null>(null)
   const { user } = useAuth()
 
-  // Hydrate from localStorage first, then override with DB data if available
+  // Clean up old shared localStorage key from before per-user storage
   useEffect(() => {
-    setState(loadFromStorage())
-    setHydrated(true)
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('wc2026-predictions')
+    }
   }, [])
 
+  // When user changes, reset everything and load that user's data
+  useEffect(() => {
+    const newUserId = user?.id ?? null
+    if (newUserId === activeUserId) return
+
+    setActiveUserId(newUserId)
+    setDbLoaded(false)
+    setHydrated(false)
+
+    if (!newUserId) {
+      setState(defaultState)
+      return
+    }
+
+    setState(loadFromStorage(newUserId))
+    setHydrated(true)
+  }, [user?.id, activeUserId])
+
+  // Load from DB — this is the source of truth for submitted status
   useEffect(() => {
     if (!user || dbLoaded) return
 
@@ -91,32 +118,26 @@ export function PredictionsProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      const hasDbData =
-        Object.keys(dbData.groupPredictions).length > 0 ||
-        Object.keys(dbData.knockoutPredictions).length > 0 ||
-        dbData.submitted
-
-      if (hasDbData) {
-        setState((prev) => ({
-          groupPredictions:
-            Object.keys(dbData.groupPredictions).length > 0
-              ? dbData.groupPredictions
-              : prev.groupPredictions,
-          knockoutPredictions:
-            Object.keys(dbData.knockoutPredictions).length > 0
-              ? dbData.knockoutPredictions
-              : prev.knockoutPredictions,
-          submitted: dbData.submitted || prev.submitted,
-        }))
-      }
+      setState((prev) => ({
+        groupPredictions:
+          Object.keys(dbData.groupPredictions).length > 0
+            ? dbData.groupPredictions
+            : prev.groupPredictions,
+        knockoutPredictions:
+          Object.keys(dbData.knockoutPredictions).length > 0
+            ? dbData.knockoutPredictions
+            : prev.knockoutPredictions,
+        // DB is the single source of truth for submitted status
+        submitted: dbData.submitted,
+      }))
       setDbLoaded(true)
     })
   }, [user, dbLoaded])
 
-  // Persist drafts to localStorage
+  // Persist drafts to localStorage (per-user)
   useEffect(() => {
-    if (hydrated) saveToStorage(state)
-  }, [state, hydrated])
+    if (hydrated && activeUserId) saveToStorage(activeUserId, state)
+  }, [state, hydrated, activeUserId])
 
   const setGroupPrediction = useCallback(
     (matchId: number, scoreA: number, scoreB: number) => {
