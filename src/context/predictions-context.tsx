@@ -19,7 +19,7 @@ import {
   matchupsFromKnockoutMatches,
   resolveKnockoutMatches,
 } from '@/lib/bracket/resolve-bracket'
-import { resetAffectedKnockoutPredictions } from '@/lib/bracket/reset-affected'
+import { collectDependents, resetAffectedKnockoutPredictions } from '@/lib/bracket/reset-affected'
 import { useAuth } from '@/context/auth-context'
 import { usePools } from '@/context/pool-context'
 import { loadPredictions, submitPredictionsToDb } from '@/app/actions/predictions'
@@ -143,6 +143,11 @@ function ScopedPredictionsProvider({
     loadPredictions(poolId).then((dbData) => {
       if (cancelled) return
       if (!dbData) {
+        // User is not a member — clear any stale localStorage state so the UI
+        // doesn't incorrectly show them as submitted/registered.
+        if (!isMember) {
+          setState(defaultPredictionsState)
+        }
         setDbLoaded(true)
         return
       }
@@ -167,7 +172,7 @@ function ScopedPredictionsProvider({
     return () => {
       cancelled = true
     }
-  }, [userId, poolId])
+  }, [userId, poolId, isMember])
 
   // Persist drafts to localStorage. Anonymous users save under the
   // 'anon' scope so their picks carry over on signup (see loadFromStorage).
@@ -227,37 +232,6 @@ function ScopedPredictionsProvider({
       })
   }, [userId, poolId, isMember, poolName, onAutoJoined])
 
-  const setGroupPrediction = useCallback(
-    (matchId: number, scoreA: number | undefined, scoreB: number | undefined) => {
-      setState((prev) => {
-        const nextGroupPredictions = { ...prev.groupPredictions }
-        if (scoreA === undefined && scoreB === undefined) {
-          delete nextGroupPredictions[matchId]
-        } else {
-          nextGroupPredictions[matchId] = { scoreA, scoreB }
-        }
-        return { ...prev, groupPredictions: nextGroupPredictions }
-      })
-      if (hasCompleteScore(scoreA, scoreB)) {
-        tryAutoJoin()
-      }
-    },
-    [tryAutoJoin],
-  )
-
-  const setKnockoutPrediction = useCallback(
-    (matchId: string, winnerId: number) => {
-      setState((prev) => ({
-        ...prev,
-        knockoutPredictions: {
-          ...prev.knockoutPredictions,
-          [matchId]: winnerId,
-        },
-      }))
-    },
-    [],
-  )
-
   const buildKnockoutMatchesForState = useCallback((snapshot: PredictionsState) => {
     const allStandings: Record<string, ReturnType<typeof calculateGroupStandings>> = {}
     for (const group of GROUPS) {
@@ -271,6 +245,79 @@ function ScopedPredictionsProvider({
     })
     return generateKnockoutBracket(allStandings, qualifiedGroups)
   }, [])
+
+  const setGroupPrediction = useCallback(
+    (matchId: number, scoreA: number | undefined, scoreB: number | undefined) => {
+      setState((prev) => {
+        const nextGroupPredictions = { ...prev.groupPredictions }
+        if (scoreA === undefined && scoreB === undefined) {
+          delete nextGroupPredictions[matchId]
+        } else {
+          nextGroupPredictions[matchId] = { scoreA, scoreB }
+        }
+
+        const nextState = { ...prev, groupPredictions: nextGroupPredictions }
+
+        // Only run bracket comparison when all groups were previously complete
+        // (otherwise the bracket page isn't even visible).
+        const hadAllGroups =
+          Object.values(prev.groupPredictions).filter((p) => hasCompleteScore(p.scoreA, p.scoreB)).length >= 72
+
+        if (hadAllGroups && Object.keys(prev.knockoutPredictions).length > 0) {
+          const previousMatches = buildKnockoutMatchesForState(prev)
+          const nextMatches = buildKnockoutMatchesForState(nextState)
+          const reset = resetAffectedKnockoutPredictions({
+            previousMatches,
+            nextMatches,
+            predictions: prev.knockoutPredictions,
+          })
+          if (reset.resetMatchIds.size > 0) {
+            return {
+              ...nextState,
+              knockoutPredictions: reset.predictions,
+              knockoutMatchups: {},
+            }
+          }
+        }
+
+        return nextState
+      })
+      if (hasCompleteScore(scoreA, scoreB)) {
+        tryAutoJoin()
+      }
+    },
+    [tryAutoJoin, buildKnockoutMatchesForState],
+  )
+
+  const setKnockoutPrediction = useCallback(
+    (matchId: string, winnerId: number) => {
+      setState((prev) => {
+        const previousWinner = prev.knockoutPredictions[matchId]
+
+        // Same pick — no change needed.
+        if (previousWinner === winnerId) return prev
+
+        const nextPredictions = { ...prev.knockoutPredictions, [matchId]: winnerId }
+
+        // If the winner changed, clear all downstream predictions that
+        // depend on this match (they now have different participants).
+        if (previousWinner !== undefined) {
+          const downstream = collectDependents([matchId])
+          downstream.delete(matchId) // keep the current pick
+          for (const depId of downstream) {
+            delete nextPredictions[depId]
+          }
+        }
+
+        return {
+          ...prev,
+          knockoutPredictions: nextPredictions,
+          knockoutMatchups: previousWinner !== undefined ? {} : prev.knockoutMatchups,
+        }
+      })
+    },
+    [],
+  )
 
   const setTieBreakResolution = useCallback((key: string, teamOrder: number[]) => {
     setState((prev) => {
@@ -358,7 +405,14 @@ function ScopedPredictionsProvider({
 
   const copyPredictionsFromPool = useCallback(async (sourcePoolId: string) => {
     if (!poolId) return 'No active pool'
-    const result = await copyPredictionsBetweenPools(sourcePoolId, poolId)
+
+    let result: { success: boolean; error?: string }
+    if (isMember) {
+      result = await copyPredictionsBetweenPools(sourcePoolId, poolId)
+    } else {
+      result = await joinPool(poolId, { copyFromPoolId: sourcePoolId })
+    }
+
     if (!result.success) {
       return result.error ?? 'Failed to copy predictions'
     }
@@ -375,7 +429,7 @@ function ScopedPredictionsProvider({
     }
     void onAutoJoined()
     return null
-  }, [poolId, onAutoJoined])
+  }, [poolId, isMember, onAutoJoined])
 
   const resetPredictions = useCallback(() => {
     setState(defaultPredictionsState)

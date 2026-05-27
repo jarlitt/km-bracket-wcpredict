@@ -40,10 +40,8 @@ export function CopyPredictionsDialog() {
     () => memberships.map((membership) => membership.pool),
     [memberships],
   )
-  const isDestinationMember =
-    !!activePool && memberships.some((membership) => membership.pool.id === activePool.id)
   const isReadOnlySubmitted = submitted && !editingSubmission
-  const canCopy = !!activePool && isDestinationMember && sourcePools.length > 0 && !locked
+  const canCopy = !!activePool && sourcePools.length > 0 && !locked
 
   const resetDialog = () => {
     setStep('select')
@@ -65,13 +63,13 @@ export function CopyPredictionsDialog() {
       toast.error(error)
       return
     }
-    await refresh()
     toast.success(`Copied predictions from ${sourcePool.name}.`)
     setOpen(false)
     resetDialog()
+    void refresh()
   }
 
-  if (!activePool || !isDestinationMember || sourcePools.length === 0 || isReadOnlySubmitted) {
+  if (!activePool || sourcePools.length === 0 || isReadOnlySubmitted) {
     return null
   }
 

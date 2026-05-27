@@ -37,7 +37,7 @@ function matchupChanged(previous: KnockoutMatch, next: KnockoutMatch): boolean {
   return previous.teamAId !== next.teamAId || previous.teamBId !== next.teamBId
 }
 
-function collectDependents(matchIds: Iterable<string>): Set<string> {
+export function collectDependents(matchIds: Iterable<string>): Set<string> {
   const resetMatchIds = new Set(matchIds)
   const queue = [...resetMatchIds]
 
