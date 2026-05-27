@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { PoolFlag } from '@/components/pools/pool-flag'
-import { isTournamentLockedAsync } from '@/lib/matches/lock'
+import { isTournamentLockedAsync } from '@/lib/matches/lock-server'
 import { createClient } from '@/lib/supabase/server'
 
 export default async function CountryPoolPage({
