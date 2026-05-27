@@ -28,8 +28,6 @@ import {
   type PredictionsState,
 } from '@/lib/predictions/storage'
 import { hasCompleteScore } from '@/lib/predictions/completeness'
-// TODO: Task 14 — remove reconcilePredictionStateForMembership entirely
-import { reconcilePredictionStateForMembership } from '@/lib/predictions/membership-state'
 import { isTournamentLocked } from '@/lib/matches/lock'
 import type { KnockoutMatchup } from '@/types'
 
@@ -52,7 +50,6 @@ interface PredictionsContextType extends PredictionsState {
   totalKnockoutPredictions: number
   submitting: boolean
   dbLoaded: boolean
-  hasActivePool: boolean
   predictionsLocked: boolean
   editingSubmission: boolean
 }
@@ -84,20 +81,15 @@ function saveToStorage(
  */
 export function PredictionsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
-  const { userPool, refresh } = usePools()
+  const { userPool } = usePools()
   const userId = user?.id ?? null
   const poolId = userPool?.id ?? null
-  const poolName = userPool?.name ?? null
-  const isMember = !!poolId && !!user
 
   return (
     <ScopedPredictionsProvider
       key={`${userId ?? 'anon'}:${poolId ?? 'none'}`}
       userId={userId}
       poolId={poolId}
-      poolName={poolName}
-      isMember={isMember}
-      onAutoJoined={refresh}
     >
       {children}
     </ScopedPredictionsProvider>
@@ -107,18 +99,12 @@ export function PredictionsProvider({ children }: { children: ReactNode }) {
 interface ScopedProps {
   userId: string | null
   poolId: string | null
-  poolName: string | null
-  isMember: boolean
-  onAutoJoined: () => Promise<void>
   children: ReactNode
 }
 
 function ScopedPredictionsProvider({
   userId,
   poolId,
-  poolName,
-  isMember,
-  onAutoJoined,
   children,
 }: ScopedProps) {
   // Seed from localStorage lazily so we don't need an effect to do it.
@@ -128,7 +114,6 @@ function ScopedPredictionsProvider({
   const [submitting, setSubmitting] = useState(false)
   const [dbLoaded, setDbLoaded] = useState(false)
   const [editingSubmission, setEditingSubmission] = useState(false)
-  const [membershipRefreshPending, setMembershipRefreshPending] = useState(false)
 
   // Hydrate from DB. All setStates live inside the .then() callback so the
   // synchronous body of the effect never touches state.
@@ -140,11 +125,6 @@ function ScopedPredictionsProvider({
     loadPredictions().then((dbData) => {
       if (cancelled) return
       if (!dbData) {
-        // User is not a member — clear any stale localStorage state so the UI
-        // doesn't incorrectly show them as submitted/registered.
-        if (!isMember) {
-          setState(defaultPredictionsState)
-        }
         setDbLoaded(true)
         return
       }
@@ -169,7 +149,7 @@ function ScopedPredictionsProvider({
     return () => {
       cancelled = true
     }
-  }, [userId, poolId, isMember])
+  }, [userId, poolId])
 
   // Persist drafts to localStorage. Anonymous users save under the
   // 'anon' scope so their picks carry over on signup (see loadFromStorage).
@@ -177,30 +157,6 @@ function ScopedPredictionsProvider({
     if (editingSubmission && state.submitted) return
     if (poolId) saveToStorage(userId, poolId, state)
   }, [state, userId, poolId, editingSubmission])
-
-  useEffect(() => {
-    if (isMember) {
-      if (membershipRefreshPending) {
-        void Promise.resolve().then(() => setMembershipRefreshPending(false))
-      }
-      return
-    }
-    if (!state.submitted) return
-
-    void Promise.resolve().then(() => {
-      setEditingSubmission(false)
-      setState((prev) =>
-        reconcilePredictionStateForMembership(prev, false, {
-          membershipRefreshPending,
-        }),
-      )
-    })
-  }, [isMember, membershipRefreshPending, state.submitted])
-
-  // In the country-based model, auto-join is no longer needed — users are
-  // implicitly in their country pool. This is a no-op kept so callers that
-  // trigger it on first edit don't need to be rewritten yet.
-  const tryAutoJoin = useCallback(() => {}, [])
 
   const buildKnockoutMatchesForState = useCallback((snapshot: PredictionsState) => {
     const allStandings: Record<string, ReturnType<typeof calculateGroupStandings>> = {}
@@ -252,11 +208,8 @@ function ScopedPredictionsProvider({
 
         return nextState
       })
-      if (hasCompleteScore(scoreA, scoreB)) {
-        tryAutoJoin()
-      }
     },
-    [tryAutoJoin, buildKnockoutMatchesForState],
+    [buildKnockoutMatchesForState],
   )
 
   const setKnockoutPrediction = useCallback(
@@ -336,8 +289,6 @@ function ScopedPredictionsProvider({
       if (!result.success) {
         return result.error ?? 'Failed to submit predictions'
       }
-      setMembershipRefreshPending(true)
-      await onAutoJoined()
       setState((prev) => ({ ...prev, knockoutMatchups: submittedMatchups, submitted: true }))
       setEditingSubmission(false)
       return null
@@ -349,7 +300,6 @@ function ScopedPredictionsProvider({
     state.groupPredictions,
     state.knockoutPredictions,
     buildCurrentKnockoutMatchups,
-    onAutoJoined,
   ])
 
   const startEditingSubmission = useCallback(() => {
@@ -408,8 +358,7 @@ function ScopedPredictionsProvider({
     }
 
     setState(prev => ({ ...prev, groupPredictions, knockoutPredictions: {}, knockoutMatchups: {} }))
-    tryAutoJoin()
-  }, [tryAutoJoin])
+  }, [])
 
   const autofillAllOneZero = useCallback(() => {
     const groupPredictions: Record<number, { scoreA: number; scoreB: number }> = {}
@@ -417,8 +366,7 @@ function ScopedPredictionsProvider({
       groupPredictions[match.id] = { scoreA: 1, scoreB: 0 }
     }
     setState(prev => ({ ...prev, groupPredictions, knockoutPredictions: {}, knockoutMatchups: {} }))
-    tryAutoJoin()
-  }, [tryAutoJoin])
+  }, [])
 
   const autofillGroupDemo = useCallback((groupId: string) => {
     const matches = GROUP_MATCHES.filter(m => m.groupId === groupId)
@@ -453,8 +401,7 @@ function ScopedPredictionsProvider({
       }
       return { ...prev, groupPredictions: gp }
     })
-    tryAutoJoin()
-  }, [tryAutoJoin])
+  }, [])
 
   const autofillKnockoutDemo = useCallback(() => {
     const gp = state.groupPredictions
@@ -573,7 +520,6 @@ function ScopedPredictionsProvider({
       totalKnockoutPredictions,
       submitting,
       dbLoaded,
-      hasActivePool: !!poolId,
       predictionsLocked,
       editingSubmission,
     }}>
