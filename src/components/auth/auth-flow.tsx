@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { EmailInput } from '@/components/auth/email-input'
+import { OFFICE_COUNTRIES, validateSignupFields } from '@/components/auth/auth-validation'
+import { PoolFlag } from '@/components/pools/pool-flag'
 import { useAuth, safeNextPath } from '@/context/auth-context'
 import { cn } from '@/lib/utils'
 
@@ -52,12 +54,14 @@ export function AuthFields({
   const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [country, setCountry] = useState('')
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<{
     name?: string
     email?: string
     password?: string
+    country?: string
     general?: string
   }>({})
 
@@ -94,21 +98,15 @@ export function AuthFields({
 
   const handleSignup = async (event: React.FormEvent) => {
     event.preventDefault()
-    const nextErrors: typeof errors = {}
-    if (!displayName) nextErrors.name = 'Name is required'
-    if (!email) nextErrors.email = 'Email is required'
-    else if (!isValidEmail(email)) nextErrors.email = 'Enter a valid email address'
-    if (!password) nextErrors.password = 'Password is required'
-    else if (password.length < 6) nextErrors.password = 'Must be at least 6 characters'
-
+    const nextErrors = validateSignupFields({ displayName, email, password, country })
     if (Object.keys(nextErrors).length > 0) {
-      setErrors(nextErrors)
+      setErrors(nextErrors as typeof errors)
       return
     }
 
     setLoading(true)
     setErrors({})
-    const errorMsg = await signup(email, password, displayName, next)
+    const errorMsg = await signup(email, password, displayName, country, next)
     setLoading(false)
     if (errorMsg) {
       setErrors({ general: errorMsg })
@@ -177,6 +175,32 @@ export function AuthFields({
             className={cn(errors.name && 'ring-2 ring-destructive border-destructive')}
           />
           {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
+        </div>
+        <div className="space-y-2">
+          <Label>Office country</Label>
+          <div className="grid grid-cols-2 gap-2">
+            {OFFICE_COUNTRIES.map((office) => (
+              <button
+                key={office.slug}
+                type="button"
+                onClick={() => {
+                  setCountry(office.slug)
+                  setErrors((prev) => ({ ...prev, country: undefined }))
+                }}
+                className={cn(
+                  'flex items-center gap-2 rounded-xl border p-3 text-left text-sm transition-colors',
+                  country === office.slug
+                    ? 'border-primary bg-primary/10 text-foreground'
+                    : 'border-border/50 bg-card/40 text-muted-foreground hover:bg-card/70',
+                )}
+                aria-pressed={country === office.slug}
+              >
+                <PoolFlag slug={office.slug} size={20} />
+                <span className="font-medium">{office.label}</span>
+              </button>
+            ))}
+          </div>
+          {errors.country && <p className="text-xs text-destructive">{errors.country}</p>}
         </div>
         <EmailInput
           value={email}

@@ -11,6 +11,8 @@ import {
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { safeNextPath } from '@/lib/auth/safe-next'
+import { migrateAnonDraftToCountryPool } from '@/lib/predictions/anon-migration'
+import { listAvailablePools } from '@/app/actions/pools'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 
 export { safeNextPath }
@@ -19,6 +21,7 @@ interface User {
   id: string
   email: string
   displayName: string
+  country: string
 }
 
 interface AuthContextType {
@@ -26,7 +29,7 @@ interface AuthContextType {
   loading: boolean
   /** Returns null on success or an error message string. `next` is honored for the post-auth redirect. */
   login: (email: string, password: string, next?: string) => Promise<string | null>
-  signup: (email: string, password: string, displayName: string, next?: string) => Promise<string | null>
+  signup: (email: string, password: string, displayName: string, country: string, next?: string) => Promise<string | null>
   logout: () => void
   resetPasswordRequest: (email: string) => Promise<string | null>
   updatePassword: (password: string) => Promise<string | null>
@@ -39,6 +42,7 @@ function mapSupabaseUser(u: SupabaseUser): User {
     id: u.id,
     email: u.email ?? '',
     displayName: u.user_metadata?.display_name ?? u.email?.split('@')[0] ?? 'User',
+    country: u.user_metadata?.country ?? '',
   }
 }
 
@@ -71,14 +75,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return null
   }, [supabase.auth, router])
 
-  const signup = useCallback(async (email: string, password: string, displayName: string, next?: string): Promise<string | null> => {
-    const { error } = await supabase.auth.signUp({
+  const signup = useCallback(async (email: string, password: string, displayName: string, country: string, next?: string): Promise<string | null> => {
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { display_name: displayName } },
+      options: { data: { display_name: displayName, country } },
     })
     if (error) return error.message
-    router.replace(safeNextPath(next))
+
+    if (typeof window !== 'undefined' && data.user) {
+      try {
+        const pools = await listAvailablePools()
+        const pool = pools.find(p => p.slug === country)
+        if (pool) {
+          migrateAnonDraftToCountryPool(window.localStorage, data.user.id, pool.id)
+        }
+      } catch {
+        // Best-effort migration — don't block signup on failure
+      }
+    }
+
+    router.replace('/predict/groups')
     return null
   }, [supabase.auth, router])
 
