@@ -6,7 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { PoolsSection } from '@/components/home/pools-section'
+import { DashboardSection } from '@/components/home/dashboard-section'
 
 const FEATURES = [
   {
@@ -47,7 +47,7 @@ export default function HomePage() {
         </p>
         <div className="mt-10 flex gap-4">
           <Link
-            href="/pools"
+            href="/predict/groups"
             className={buttonVariants({ size: 'lg', className: 'px-8 text-base' })}
           >
             Start Predicting
@@ -61,7 +61,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <PoolsSection />
+      <DashboardSection />
 
       <section className="mx-auto max-w-5xl px-4 pb-20">
         <div className="grid gap-6 md:grid-cols-3">

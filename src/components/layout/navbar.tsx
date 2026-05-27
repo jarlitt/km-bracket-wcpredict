@@ -8,17 +8,9 @@ import { ChevronDown, LogOut, Menu, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/auth-context'
 import { usePredictions } from '@/context/predictions-context'
-import { usePools } from '@/context/pool-context'
-import { PoolMenuSections } from '@/components/pools/pool-menu-sections'
 import { AuthModal } from '@/components/auth/auth-modal'
 import { isNavLinkActive } from '@/lib/pools/path'
 import type { AuthMode } from '@/components/auth/auth-flow'
-import type { Pool } from '@/types'
-
-const NAV_LINKS = [
-  { href: '/', label: 'Home' },
-  { href: '/rules', label: 'Rules' },
-]
 
 const LIVE_SCORE_HREF = '/matches'
 
@@ -27,19 +19,27 @@ const ADMIN_EMAILS = ['jorge.astiaso@kingmakers.com', 'jorge.arlitt+1@gmail.com'
 export function Navbar() {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [poolsOpen, setPoolsOpen] = useState(false)
   const [demoOpen, setDemoOpen] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
   const [authMode, setAuthMode] = useState<AuthMode>('login')
   const [authReturnTo, setAuthReturnTo] = useState('/')
   const { user, logout } = useAuth()
   const { autofillDemo, autofillAllOneZero, autofillKnockoutDemo, resetPredictions, submitted } = usePredictions()
-  const { availablePools, userPool } = usePools()
 
   const isAdmin = ADMIN_EMAILS.includes(user?.email ?? '') && !submitted
-  const myPools = userPool ? [userPool] : []
-  const morePools = availablePools.filter((pool) => pool.id !== userPool?.id)
-  const summariesByPoolId = undefined
+
+  const navLinks = user
+    ? [
+        { href: '/', label: 'Home' },
+        { href: '/predict/groups', label: 'Predict' },
+        { href: '/leaderboard', label: 'Leaderboard' },
+        { href: `/pools/${user.country}`, label: 'My Office' },
+        { href: '/rules', label: 'Rules' },
+      ]
+    : [
+        { href: '/', label: 'Home' },
+        { href: '/rules', label: 'Rules' },
+      ]
 
   useEffect(() => {
     if (!mobileOpen) return
@@ -81,7 +81,7 @@ export function Navbar() {
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">
-          {NAV_LINKS.map((link) => {
+          {navLinks.map((link) => {
             const isActive = isNavLinkActive(link.href, pathname)
             return (
               <Link
@@ -96,14 +96,6 @@ export function Navbar() {
               </Link>
             )
           })}
-          <PoolsDropdown
-            open={poolsOpen}
-            onOpenChange={setPoolsOpen}
-            myPools={myPools}
-            morePools={morePools}
-            summariesByPoolId={summariesByPoolId}
-            active={isNavLinkActive('/pools', pathname)}
-          />
           <LiveScoreLink
             active={isNavLinkActive(LIVE_SCORE_HREF, pathname)}
           />
@@ -169,7 +161,7 @@ export function Navbar() {
       {mobileOpen && (
         <div className="border-t border-border/40 bg-background/95 backdrop-blur-xl md:hidden">
           <div className="flex flex-col gap-1 px-4 py-3">
-            {NAV_LINKS.map((link) => {
+            {navLinks.map((link) => {
               const isActive = isNavLinkActive(link.href, pathname)
               return (
                 <Link
@@ -186,12 +178,6 @@ export function Navbar() {
                 </Link>
               )
             })}
-            <MobilePoolsSection
-              myPools={myPools}
-              morePools={morePools}
-              summariesByPoolId={summariesByPoolId}
-              onNavigate={() => setMobileOpen(false)}
-            />
             <LiveScoreLink
               active={isNavLinkActive(LIVE_SCORE_HREF, pathname)}
               variant="mobile"
@@ -402,131 +388,6 @@ function DemoControlsList({
   )
 }
 
-function PoolsDropdown({
-  open,
-  onOpenChange,
-  myPools,
-  morePools,
-  summariesByPoolId,
-  active,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  myPools: Pool[]
-  morePools: Pool[]
-  summariesByPoolId?: Map<
-    string,
-    {
-      submitted: boolean
-      groupPredictionCount: number
-      knockoutPredictionCount: number
-    }
-  >
-  active: boolean
-}) {
-  const dropdownRef = useRef<HTMLDivElement | null>(null)
-
-  useEffect(() => {
-    if (!open) return
-
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target
-      if (!(target instanceof Node)) return
-      if (dropdownRef.current?.contains(target)) return
-      onOpenChange(false)
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onOpenChange(false)
-    }
-
-    document.addEventListener('pointerdown', handlePointerDown)
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown)
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [open, onOpenChange])
-
-  return (
-    <div ref={dropdownRef} className="relative">
-      <button
-        type="button"
-        onClick={() => onOpenChange(!open)}
-        className={cn(
-          buttonVariants({ variant: 'ghost', size: 'sm' }),
-          'gap-1.5',
-          active ? 'bg-muted text-foreground' : 'text-muted-foreground',
-        )}
-        aria-expanded={open}
-        aria-haspopup="menu"
-      >
-        Pools
-        <ChevronDown
-          className={cn('size-3.5 transition-transform', open && 'rotate-180')}
-        />
-      </button>
-
-      {open && (
-        <div className="absolute left-1/2 top-full z-50 mt-2 w-72 -translate-x-1/2 rounded-xl border border-border/50 bg-popover p-2 text-popover-foreground shadow-xl">
-          <PoolMenuSections
-            myPools={myPools}
-            morePools={morePools}
-            summariesByPoolId={summariesByPoolId}
-            onNavigate={() => onOpenChange(false)}
-          />
-          <div className="mt-2 border-t border-border/40 pt-2">
-            <Link
-              href="/pools"
-              onClick={() => onOpenChange(false)}
-              className="block rounded-lg px-2 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-            >
-              Manage all pools
-            </Link>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function MobilePoolsSection({
-  myPools,
-  morePools,
-  summariesByPoolId,
-  onNavigate,
-}: {
-  myPools: Pool[]
-  morePools: Pool[]
-  summariesByPoolId?: Map<
-    string,
-    {
-      submitted: boolean
-      groupPredictionCount: number
-      knockoutPredictionCount: number
-    }
-  >
-  onNavigate: () => void
-}) {
-  return (
-    <div className="mt-1 rounded-lg border border-border/40 p-2">
-      <Link
-        href="/pools"
-        onClick={onNavigate}
-        className="mb-2 block rounded-md px-2 py-1 text-sm font-medium text-foreground hover:bg-muted/50"
-      >
-        Pools
-      </Link>
-      <PoolMenuSections
-        myPools={myPools}
-        morePools={morePools}
-        summariesByPoolId={summariesByPoolId}
-        onNavigate={onNavigate}
-      />
-    </div>
-  )
-}
-
 function LiveScoreLink({
   active,
   variant = 'desktop',
@@ -536,9 +397,6 @@ function LiveScoreLink({
   variant?: 'desktop' | 'mobile'
   onClick?: () => void
 }) {
-  // Reddish standalone button with an always-on pulsing dot — same palette as
-  // the "Live" badge on individual match rows so the visual language is
-  // consistent across the app.
   return (
     <Link
       href={LIVE_SCORE_HREF}
