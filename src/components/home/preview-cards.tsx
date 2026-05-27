@@ -35,7 +35,6 @@ function GroupPreviewVisual() {
 function BracketPreviewVisual() {
   return (
     <div className="flex items-center gap-1">
-      {/* Left side */}
       <div className="flex flex-col gap-3">
         <div className="h-4 w-12 rounded border border-white/20 bg-white/10" />
         <div className="h-4 w-12 rounded border border-white/20 bg-white/10" />
@@ -45,12 +44,10 @@ function BracketPreviewVisual() {
         <div className="h-8 w-px bg-white/20" />
         <div className="h-px w-3 bg-white/20" />
       </div>
-      {/* Center winner */}
       <div className="flex flex-col items-center gap-1">
         <div className="h-5 w-14 rounded border border-indigo-400/30 bg-indigo-500/20" />
         <span className="text-[8px] text-indigo-300">🏆</span>
       </div>
-      {/* Right side */}
       <div className="flex flex-col items-center">
         <div className="h-px w-3 bg-white/20" />
         <div className="h-8 w-px bg-white/20" />
@@ -109,10 +106,8 @@ export function PreviewCards() {
   if ((user && started) || submitted) return null
 
   return (
-    <section className="space-y-6">
-      <p className="text-center text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-        What You&apos;ll Be Doing
-      </p>
+    <section className="space-y-4">
+      <h2 className="text-lg font-semibold">What You&apos;ll Be Doing</h2>
 
       <div className="grid gap-4 sm:grid-cols-3">
         {CARDS.map((card) => (

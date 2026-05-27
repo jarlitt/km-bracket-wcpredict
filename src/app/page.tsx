@@ -1,8 +1,9 @@
 import { HeroSection } from '@/components/home/hero-section'
 import { ParticipationBanner } from '@/components/home/participation-banner'
 import { PreviewCards } from '@/components/home/preview-cards'
-import { HomeLeaderboard } from '@/components/home/home-leaderboard'
+import { GlobalPlayerTable } from '@/components/leaderboard/global-player-table'
 import { UpcomingMatches } from '@/components/home/upcoming-matches'
+import Link from 'next/link'
 import { ClosingCta } from '@/components/home/closing-cta'
 import { createClient } from '@/lib/supabase/server'
 import {
@@ -62,12 +63,23 @@ export default async function HomePage() {
           officeCounts={officeCounts}
         />
         <PreviewCards />
-        <HomeLeaderboard
-          players={globalPlayers}
-          countries={countryStandings}
-          currentUserId={user?.id}
-          locked={locked}
-        />
+        <section className="space-y-4">
+          <h2 className="text-lg font-semibold">Leaderboard</h2>
+          <GlobalPlayerTable
+            players={globalPlayers}
+            countries={countryStandings.map(({ slug, name }) => ({ slug, name }))}
+            locked={locked}
+            currentUserId={user?.id}
+          />
+          <div className="text-center">
+            <Link
+              href="/leaderboard"
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              View full leaderboard →
+            </Link>
+          </div>
+        </section>
         <UpcomingMatches matches={upcomingMatches} locked={locked} />
         <ClosingCta locked={locked} />
       </div>
