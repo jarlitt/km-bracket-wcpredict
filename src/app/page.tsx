@@ -1,68 +1,76 @@
+import { HeroSection } from '@/components/home/hero-section'
+import { ParticipationBanner } from '@/components/home/participation-banner'
+import { PreviewCards } from '@/components/home/preview-cards'
+import { HomeLeaderboard } from '@/components/home/home-leaderboard'
+import { UpcomingMatches } from '@/components/home/upcoming-matches'
+import { ClosingCta } from '@/components/home/closing-cta'
+import { createClient } from '@/lib/supabase/server'
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import { HeroCta } from '@/components/home/dashboard-section'
+  getTournamentLockAt,
+  isTournamentLockedAsync,
+} from '@/lib/matches/lock-server'
+import { aggregateLeaderboard } from '@/lib/leaderboard/aggregate'
+import { GROUP_MATCHES } from '@/lib/data/matches'
 
-const FEATURES = [
-  {
-    icon: '📝',
-    title: 'Predict All Matches',
-    description:
-      'Enter your predicted scores for all 72 group-stage matches across 12 groups.',
-  },
-  {
-    icon: '🏆',
-    title: 'Auto-Generated Bracket',
-    description:
-      'Your group predictions automatically generate a unique knockout bracket for you to complete.',
-  },
-  {
-    icon: '⚡',
-    title: 'Live Scoring',
-    description:
-      'Earn points as real results come in. Track your score and climb the leaderboard.',
-  },
-]
+export default async function HomePage() {
+  const supabase = await createClient()
 
-export default function HomePage() {
+  const [lockAt, locked, { data: { user } }] = await Promise.all([
+    getTournamentLockAt(),
+    isTournamentLockedAsync(),
+    supabase.auth.getUser(),
+  ])
+
+  const [
+    { data: scores },
+    { data: profiles },
+    { data: pools },
+    { data: submissions },
+    { data: members },
+  ] = await Promise.all([
+    supabase.from('user_scores').select('user_id, pool_id, total_score'),
+    supabase.from('profiles').select('id, display_name, country'),
+    supabase.from('pools').select('id, slug, name').eq('is_active', true),
+    supabase.from('submissions').select('user_id, pool_id'),
+    supabase.from('pool_members').select('user_id, pool_id'),
+  ])
+
+  const { countryStandings, globalPlayers } = aggregateLeaderboard(
+    scores ?? [],
+    profiles ?? [],
+    pools ?? [],
+    submissions ?? [],
+    members ?? [],
+  )
+
+  const officeCounts = countryStandings.map((c) => ({
+    slug: c.slug,
+    name: c.name,
+    count: c.memberCount,
+  }))
+
+  const totalSubmitted = officeCounts.reduce((sum, o) => sum + o.count, 0)
+
+  const upcomingMatches = GROUP_MATCHES.slice(0, 4)
+
   return (
     <div className="gradient-bg min-h-screen">
-      <section className="flex flex-col items-center justify-center px-4 pb-16 pt-20 text-center md:pt-28">
-        <p className="mb-4 text-sm font-medium uppercase tracking-widest text-muted-foreground">
-          FIFA World Cup 2026
-        </p>
-        <h1 className="max-w-3xl text-4xl font-bold tracking-tight md:text-6xl">
-          World Cup 2026{' '}
-          <span className="bg-linear-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
-            Predictor
-          </span>
-        </h1>
-        <p className="mt-6 max-w-xl text-lg text-muted-foreground">
-          Predict every match. Climb the leaderboard. Prove you know football.
-        </p>
-        <HeroCta />
-      </section>
-
-      <section className="mx-auto max-w-5xl px-4 pb-20">
-        <div className="grid gap-6 md:grid-cols-3">
-          {FEATURES.map((feature) => (
-            <Card key={feature.title} className="glass-card border-0">
-              <CardHeader>
-                <div className="mb-2 text-3xl">{feature.icon}</div>
-                <CardTitle className="text-lg">{feature.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  {feature.description}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </section>
+      <div className="mx-auto max-w-3xl space-y-12 px-4 pb-20 pt-20 md:pt-28">
+        <HeroSection lockAt={lockAt.toISOString()} locked={locked} />
+        <ParticipationBanner
+          totalSubmitted={totalSubmitted}
+          officeCounts={officeCounts}
+        />
+        <PreviewCards />
+        <HomeLeaderboard
+          players={globalPlayers}
+          countries={countryStandings}
+          currentUserId={user?.id}
+          locked={locked}
+        />
+        <UpcomingMatches matches={upcomingMatches} locked={locked} />
+        <ClosingCta locked={locked} />
+      </div>
 
       <footer className="border-t border-border/40 py-8 text-center text-sm text-muted-foreground">
         <p>World Cup 2026 Predictor — Built for the beautiful game</p>
