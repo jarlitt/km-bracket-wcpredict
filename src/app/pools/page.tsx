@@ -1,13 +1,11 @@
 'use client'
 
 import { useMemo } from 'react'
+import Link from 'next/link'
 import { useAuth } from '@/context/auth-context'
 import { usePools } from '@/context/pool-context'
-import type { Pool } from '@/types'
-import {
-  JoinedPoolCard,
-  NotJoinedPoolCard,
-} from '@/components/pools/pool-cards'
+import { Card, CardHeader, CardTitle } from '@/components/ui/card'
+import { ArrowChip, PoolFlag } from '@/components/pools/pool-flag'
 
 export default function PoolsPage() {
   const { user, loading: authLoading } = useAuth()
@@ -45,10 +43,19 @@ export default function PoolsPage() {
             My pool
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <JoinedPoolCard
-              poolName={userPool.name}
-              poolSlug={userPool.slug}
-            />
+            <Link href="/predict/groups" className="group block h-full">
+              <Card className="flex min-h-[112px] h-full flex-col bg-card/50 border-border/50 transition-colors group-hover:bg-card/80">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-3">
+                    <PoolFlag slug={userPool.slug} />
+                    <CardTitle className="flex-1 truncate text-base">
+                      {userPool.name}
+                    </CardTitle>
+                    <ArrowChip />
+                  </div>
+                </CardHeader>
+              </Card>
+            </Link>
           </div>
         </section>
       )}
@@ -66,12 +73,24 @@ export default function PoolsPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {discoverPools.map((pool) => (
-              <NotJoinedPoolCard
+              <Link
                 key={pool.id}
-                poolName={pool.name}
-                poolSlug={pool.slug}
-                ariaLabel={`Open ${pool.name}`}
-              />
+                href="/predict/groups"
+                className="group block h-full"
+                aria-label={`Open ${pool.name}`}
+              >
+                <Card className="flex min-h-[112px] h-full flex-col justify-center bg-card/30 border-border/40 transition-colors group-hover:bg-card/60">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-3">
+                      <PoolFlag slug={pool.slug} />
+                      <CardTitle className="flex-1 truncate text-base">
+                        {pool.name}
+                      </CardTitle>
+                      <ArrowChip />
+                    </div>
+                  </CardHeader>
+                </Card>
+              </Link>
             ))}
           </div>
         )}
