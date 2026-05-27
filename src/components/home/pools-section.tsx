@@ -1,55 +1,13 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useAuth } from '@/context/auth-context'
 import { usePools } from '@/context/pool-context'
-import {
-  getMyPoolSummaries,
-  type MyPoolSummary,
-} from '@/app/actions/pools'
 import { JoinedPoolCard, NotJoinedPoolCard } from '@/components/pools/pool-cards'
 
 export function PoolsSection() {
   const { user, loading: authLoading } = useAuth()
-  const { availablePools, memberships, loading: poolsLoading } = usePools()
-
-  const [summaries, setSummaries] = useState<MyPoolSummary[] | null>(null)
-  const [summariesLoading, setSummariesLoading] = useState(false)
-
-  // Per-pool summaries (rank, submitted, etc.) only make sense for signed-in
-  // users — anon visitors just see the public list. All setState calls are
-  // pushed into a microtask to satisfy react-hooks/set-state-in-effect.
-  useEffect(() => {
-    if (authLoading) return
-    let cancelled = false
-    if (!user) {
-      Promise.resolve().then(() => {
-        if (cancelled) return
-        setSummaries([])
-        setSummariesLoading(false)
-      })
-      return () => {
-        cancelled = true
-      }
-    }
-    Promise.resolve().then(() => {
-      if (cancelled) return
-      setSummariesLoading(true)
-      getMyPoolSummaries().then((data) => {
-        if (cancelled) return
-        setSummaries(data)
-        setSummariesLoading(false)
-      })
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [user, authLoading, memberships])
-
-  const joinedPoolIds = useMemo(
-    () => new Set(memberships.map((m) => m.pool.id)),
-    [memberships],
-  )
+  const { availablePools, userPool, loading: poolsLoading } = usePools()
 
   if (authLoading || poolsLoading) {
     return (
@@ -59,63 +17,43 @@ export function PoolsSection() {
     )
   }
 
-  const summariesById = new Map(
-    (summaries ?? []).map((s) => [s.pool.id, s] as const),
-  )
-
-  const notJoinedPools = availablePools.filter((p) => !joinedPoolIds.has(p.id))
+  const otherPools = availablePools.filter((p) => p.id !== userPool?.id)
 
   return (
     <section className="mx-auto max-w-5xl px-4 pb-16 space-y-10">
-      {user && (
+      {user && userPool && (
         <div className="space-y-3">
           <SectionHeader
-            title="My pools"
-            subtitle={
-              memberships.length === 0
-                ? "You haven't joined any pools yet — jump into one below."
-                : 'Quick access to the pools you’re playing in.'
-            }
+            title="My pool"
+            subtitle="Your office pool, based on your country."
           />
-          {summariesLoading && summaries === null ? (
-            <p className="text-sm text-muted-foreground">Loading...</p>
-          ) : memberships.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              You haven&apos;t joined any pools yet.
-            </p>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {memberships.map(({ pool }) => (
-                <JoinedPoolCard
-                  key={pool.id}
-                  poolName={pool.name}
-                  poolSlug={pool.slug}
-                  summary={summariesById.get(pool.id)}
-                />
-              ))}
-            </div>
-          )}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <JoinedPoolCard
+              poolName={userPool.name}
+              poolSlug={userPool.slug}
+            />
+          </div>
         </div>
       )}
 
       <div className="space-y-3">
         <SectionHeader
-          title={user ? 'Discover more pools' : 'All pools'}
+          title={user ? 'Other pools' : 'All pools'}
           subtitle={
             user
-              ? 'Browse pools you haven’t joined yet.'
-              : 'Preview any pool without an account. Sign up when you’re ready to submit.'
+              ? 'Browse pools from other offices.'
+              : 'Preview any pool without an account. Sign up when you\u2019re ready to submit.'
           }
         />
-        {notJoinedPools.length === 0 ? (
+        {otherPools.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             {user
-              ? "You're in every open pool. Nothing left to discover."
+              ? 'No other pools available right now.'
               : 'No pools are open right now. Check back soon.'}
           </p>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {notJoinedPools.map((pool) => (
+            {otherPools.map((pool) => (
               <NotJoinedPoolCard
                 key={pool.id}
                 poolName={pool.name}

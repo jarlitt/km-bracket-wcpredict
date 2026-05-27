@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useEffect } from 'react'
+import { use } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -16,19 +16,10 @@ interface Props {
 }
 
 export default function PoolScopedLayout({ children, params }: Props) {
-  // Next 16 params are a Promise; `use()` unwraps it client-side.
   const { slug } = use(params)
   const pathname = usePathname()
-  const { availablePools, loading, setActivePoolBySlug } = usePools()
-
+  const { availablePools, loading } = usePools()
   const poolExists = availablePools.some((p) => p.slug === slug)
-
-  // Mirror the URL slug into PoolContext (and localStorage) so consumers that
-  // don't know the URL (e.g. the matches sheet on /matches) keep showing the
-  // last-viewed pool.
-  useEffect(() => {
-    setActivePoolBySlug(slug)
-  }, [slug, setActivePoolBySlug])
 
   if (loading) {
     return (

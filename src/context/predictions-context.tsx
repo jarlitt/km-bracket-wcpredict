@@ -6,10 +6,8 @@ import {
   useState,
   useEffect,
   useCallback,
-  useRef,
   type ReactNode,
 } from 'react'
-import { toast } from 'sonner'
 import { GROUPS, getTeamsByGroup } from '@/lib/data/teams'
 import { GROUP_MATCHES } from '@/lib/data/matches'
 import { calculateGroupStandings } from '@/lib/standings/calculate-standings'
@@ -23,7 +21,6 @@ import { collectDependents, resetAffectedKnockoutPredictions } from '@/lib/brack
 import { useAuth } from '@/context/auth-context'
 import { usePools } from '@/context/pool-context'
 import { loadPredictions, submitPredictionsToDb } from '@/app/actions/predictions'
-import { copyPredictionsBetweenPools, joinPool } from '@/app/actions/pools'
 import {
   defaultPredictionsState,
   readPredictionsFromStorage,
@@ -31,6 +28,7 @@ import {
   type PredictionsState,
 } from '@/lib/predictions/storage'
 import { hasCompleteScore } from '@/lib/predictions/completeness'
+// TODO: Task 14 — remove reconcilePredictionStateForMembership entirely
 import { reconcilePredictionStateForMembership } from '@/lib/predictions/membership-state'
 import { isTournamentLocked } from '@/lib/matches/lock'
 import type { KnockoutMatchup } from '@/types'
@@ -42,7 +40,6 @@ interface PredictionsContextType extends PredictionsState {
   setKnockoutPrediction: (matchId: string, winnerId: number) => void
   setTieBreakResolution: (key: string, teamOrder: number[]) => void
   submitPredictions: (knockoutMatchups?: Record<string, KnockoutMatchup>) => Promise<string | null>
-  copyPredictionsFromPool: (sourcePoolId: string) => Promise<string | null>
   startEditingSubmission: () => void
   cancelEditingSubmission: () => Promise<string | null>
   resetPredictions: () => void
@@ -87,11 +84,11 @@ function saveToStorage(
  */
 export function PredictionsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
-  const { activePool, memberships, refresh } = usePools()
+  const { userPool, refresh } = usePools()
   const userId = user?.id ?? null
-  const poolId = activePool?.id ?? null
-  const poolName = activePool?.name ?? null
-  const isMember = !!poolId && memberships.some((m) => m.pool.id === poolId)
+  const poolId = userPool?.id ?? null
+  const poolName = userPool?.name ?? null
+  const isMember = !!poolId && !!user
 
   return (
     <ScopedPredictionsProvider
@@ -200,37 +197,10 @@ function ScopedPredictionsProvider({
     })
   }, [isMember, membershipRefreshPending, state.submitted])
 
-  // Fire-and-forget auto-join. The ref guard ensures we only attempt one
-  // join per scoped provider lifetime (the provider remounts when user/pool
-  // changes). On failure we reset the ref so a subsequent edit retries.
-  const autoJoinAttemptedRef = useRef(false)
-  const tryAutoJoin = useCallback(() => {
-    if (!userId || !poolId || isMember || autoJoinAttemptedRef.current) return
-    autoJoinAttemptedRef.current = true
-    joinPool(poolId)
-      .then((res) => {
-        if (!res.success) {
-          // 'Already a member' means the server already has us in this pool
-          // (e.g. usePools hadn't refreshed yet); treat as silent success.
-          if (res.error !== 'Already a member of this pool') {
-            autoJoinAttemptedRef.current = false
-            toast.error(res.error ?? 'Failed to join pool automatically')
-            return
-          }
-          void onAutoJoined()
-          return
-        }
-        toast.success(
-          poolName
-            ? `You're now a member of ${poolName}.`
-            : "You're now a member of this pool.",
-        )
-        void onAutoJoined()
-      })
-      .catch(() => {
-        autoJoinAttemptedRef.current = false
-      })
-  }, [userId, poolId, isMember, poolName, onAutoJoined])
+  // In the country-based model, auto-join is no longer needed — users are
+  // implicitly in their country pool. This is a no-op kept so callers that
+  // trigger it on first edit don't need to be rewritten yet.
+  const tryAutoJoin = useCallback(() => {}, [])
 
   const buildKnockoutMatchesForState = useCallback((snapshot: PredictionsState) => {
     const allStandings: Record<string, ReturnType<typeof calculateGroupStandings>> = {}
@@ -402,34 +372,6 @@ function ScopedPredictionsProvider({
     setEditingSubmission(false)
     return null
   }, [poolId])
-
-  const copyPredictionsFromPool = useCallback(async (sourcePoolId: string) => {
-    if (!poolId) return 'No active pool'
-
-    let result: { success: boolean; error?: string }
-    if (isMember) {
-      result = await copyPredictionsBetweenPools(sourcePoolId, poolId)
-    } else {
-      result = await joinPool(poolId, { copyFromPoolId: sourcePoolId })
-    }
-
-    if (!result.success) {
-      return result.error ?? 'Failed to copy predictions'
-    }
-
-    const dbData = await loadPredictions(poolId)
-    if (dbData) {
-      setState({
-        groupPredictions: dbData.groupPredictions,
-        knockoutPredictions: dbData.knockoutPredictions,
-        knockoutMatchups: dbData.knockoutMatchups,
-        tieBreakResolutions: dbData.tieBreakResolutions,
-        submitted: dbData.submitted,
-      })
-    }
-    void onAutoJoined()
-    return null
-  }, [poolId, isMember, onAutoJoined])
 
   const resetPredictions = useCallback(() => {
     setState(defaultPredictionsState)
@@ -620,7 +562,6 @@ function ScopedPredictionsProvider({
       setKnockoutPrediction,
       setTieBreakResolution,
       submitPredictions,
-      copyPredictionsFromPool,
       startEditingSubmission,
       cancelEditingSubmission,
       resetPredictions,

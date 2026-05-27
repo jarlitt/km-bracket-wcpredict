@@ -14,13 +14,11 @@ export function PredictionBanner() {
     predictionsLocked,
     completedGroups,
   } = usePredictions()
-  const { activePool } = usePools()
+  const { userPool } = usePools()
 
-  // No active pool selected (yet). Send the user to the picker so they can
-  // pick which pool to predict in.
   const fallback = '/predict'
-  const poolBase = activePool
-    ? `/pools/${activePool.slug}/predict`
+  const poolBase = userPool
+    ? `/pools/${userPool.slug}/predict`
     : fallback
 
   if (submitted) {
@@ -37,7 +35,7 @@ export function PredictionBanner() {
                 : 'You can still edit and resubmit until the first match starts.'}
             </p>
           </div>
-          <Link href={activePool ? `${poolBase}/summary` : fallback}>
+          <Link href={userPool ? `${poolBase}/summary` : fallback}>
             <Button variant="outline" size="sm" className="shrink-0">
               View Summary
             </Button>
@@ -60,17 +58,17 @@ export function PredictionBanner() {
   if (!allGroupsDone) {
     nextStep = {
       label: 'Continue Group Predictions',
-      href: activePool ? `${poolBase}/groups` : fallback,
+      href: userPool ? `${poolBase}/groups` : fallback,
     }
   } else if (!allKnockoutDone) {
     nextStep = {
       label: 'Fill Knockout Bracket',
-      href: activePool ? `${poolBase}/bracket` : fallback,
+      href: userPool ? `${poolBase}/bracket` : fallback,
     }
   } else {
     nextStep = {
       label: 'Submit Predictions',
-      href: activePool ? `${poolBase}/bracket` : fallback,
+      href: userPool ? `${poolBase}/bracket` : fallback,
     }
   }
 
@@ -81,7 +79,7 @@ export function PredictionBanner() {
           <div>
             <p className="text-sm font-medium">Predictions in progress</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {activePool ? `${activePool.name} · ` : ''}
+              {userPool ? `${userPool.name} · ` : ''}
               Groups: {totalGroupPredictions}/72 &middot; Knockout:{' '}
               {totalKnockoutPredictions}/32
             </p>

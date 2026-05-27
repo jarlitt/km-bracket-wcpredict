@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Sheet,
   SheetBody,
@@ -29,38 +29,9 @@ interface Props {
 
 export function MatchPredictionsSheet({ open, onOpenChange, match }: Props) {
   const { user } = useAuth()
-  const { activePool, memberships } = usePools()
+  const { userPool } = usePools()
 
-  // The user can be in N pools. Default to whatever the rest of the app shows
-  // as "active", falling back to their first membership. We re-sync the
-  // default whenever the sheet opens so a previously-picked-then-closed
-  // selection doesn't stick across reopenings.
-  const defaultPoolId = activePool?.id ?? memberships[0]?.pool.id ?? null
-  const [selectedPoolId, setSelectedPoolId] = useState<string | null>(
-    defaultPoolId,
-  )
-  useEffect(() => {
-    if (!open) return
-    // Microtask-wrapped to satisfy react-hooks/set-state-in-effect: re-syncing
-    // the default selection when the sheet (re-)opens is a side-effect, not a
-    // direct render-time computation.
-    let cancelled = false
-    Promise.resolve().then(() => {
-      if (cancelled) return
-      setSelectedPoolId(defaultPoolId)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [open, defaultPoolId])
-
-  const selectedPool = useMemo(
-    () =>
-      memberships.find((m) => m.pool.id === selectedPoolId)?.pool ??
-      activePool ??
-      null,
-    [memberships, selectedPoolId, activePool],
-  )
+  const selectedPool = userPool
 
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState<MatchPredictionsPayload>(null)
@@ -102,8 +73,6 @@ export function MatchPredictionsSheet({ open, onOpenChange, match }: Props) {
   const homeLabel = match.home.team?.name ?? match.home.name
   const awayLabel = match.away.team?.name ?? match.away.name
 
-  const showPoolSelector = memberships.length > 1
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent>
@@ -117,14 +86,6 @@ export function MatchPredictionsSheet({ open, onOpenChange, match }: Props) {
             <TeamFlag team={match.away.team} size={18} />
           </SheetDescription>
         </SheetHeader>
-
-        {showPoolSelector && (
-          <PoolSelector
-            memberships={memberships}
-            selectedPoolId={selectedPool?.id ?? null}
-            onSelect={setSelectedPoolId}
-          />
-        )}
 
         <SheetBody>
           {!match.internalId ? (
@@ -152,44 +113,6 @@ export function MatchPredictionsSheet({ open, onOpenChange, match }: Props) {
         </SheetBody>
       </SheetContent>
     </Sheet>
-  )
-}
-
-function PoolSelector({
-  memberships,
-  selectedPoolId,
-  onSelect,
-}: {
-  memberships: ReturnType<typeof usePools>['memberships']
-  selectedPoolId: string | null
-  onSelect: (poolId: string) => void
-}) {
-  return (
-    <div className="border-b border-border/40 px-4 pb-3">
-      <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-        Pool
-      </p>
-      <div className="flex flex-wrap gap-1.5">
-        {memberships.map(({ pool }) => {
-          const isActive = pool.id === selectedPoolId
-          return (
-            <button
-              key={pool.id}
-              type="button"
-              onClick={() => onSelect(pool.id)}
-              className={cn(
-                'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
-                isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted/40 text-muted-foreground hover:bg-muted/60',
-              )}
-            >
-              {pool.name}
-            </button>
-          )
-        })}
-      </div>
-    </div>
   )
 }
 

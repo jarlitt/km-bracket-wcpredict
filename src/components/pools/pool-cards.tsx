@@ -1,47 +1,17 @@
 'use client'
 
 import Link from 'next/link'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
-import type { MyPoolSummary } from '@/app/actions/pools'
+import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowChip, PoolFlag } from '@/components/pools/pool-flag'
 
-/**
- * Card for pools the user has already joined. Renders a progress bar when
- * predictions are still in progress and swaps the destination + badge once
- * the user has submitted.
- */
 export function JoinedPoolCard({
   poolName,
   poolSlug,
-  summary,
 }: {
   poolName: string
   poolSlug: string
-  summary?: MyPoolSummary
 }) {
-  const isSubmitted = summary?.submitted ?? false
-  const groupCount = summary?.groupPredictionCount ?? 0
-  const inProgress = !isSubmitted && groupCount > 0
-
-  const badge = isSubmitted ? (
-    <Badge className="text-[10px] bg-emerald-500/20 text-emerald-400">
-      Submitted
-    </Badge>
-  ) : inProgress ? (
-    <Badge variant="secondary" className="text-[10px]">
-      In progress
-    </Badge>
-  ) : (
-    <Badge variant="outline" className="text-[10px]">
-      Not started
-    </Badge>
-  )
-
-  const href = isSubmitted
-    ? `/pools/${poolSlug}/predict/summary`
-    : `/pools/${poolSlug}/predict/groups`
+  const href = `/pools/${poolSlug}/predict/groups`
 
   return (
     <Link href={href} className="group block h-full">
@@ -52,23 +22,9 @@ export function JoinedPoolCard({
             <CardTitle className="flex-1 truncate text-base">
               {poolName}
             </CardTitle>
-            {badge}
             <ArrowChip />
           </div>
         </CardHeader>
-        {!isSubmitted && summary && (
-          <CardContent className="mt-auto pt-0">
-            <div className="flex items-center gap-3 text-xs">
-              <Progress
-                value={Math.round((groupCount / 72) * 100)}
-                className="flex-1 h-1.5"
-              />
-              <span className="text-muted-foreground whitespace-nowrap">
-                {groupCount}/72 groups
-              </span>
-            </div>
-          </CardContent>
-        )}
       </Card>
     </Link>
   )

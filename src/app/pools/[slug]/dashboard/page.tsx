@@ -24,13 +24,10 @@ import type { Pool } from '@/types'
 export default function PoolDashboardPage() {
   const { user } = useAuth()
   const { slug } = useParams<{ slug: string }>()
-  const { memberships, availablePools, loading: poolsLoading } = usePools()
+  const { availablePools, loading: poolsLoading } = usePools()
 
-  // Anonymous users have no memberships; fall back to the public pool list.
   const pool: Pool | null =
-    memberships.find((m) => m.pool.slug === slug)?.pool ??
-    availablePools.find((p) => p.slug === slug) ??
-    null
+    availablePools.find((p) => p.slug === slug) ?? null
 
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)

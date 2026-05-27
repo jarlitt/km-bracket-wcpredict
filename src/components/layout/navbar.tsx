@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Button, buttonVariants } from '@/components/ui/button'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, LogOut, Menu, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/auth-context'
@@ -34,19 +34,12 @@ export function Navbar() {
   const [authReturnTo, setAuthReturnTo] = useState('/')
   const { user, logout } = useAuth()
   const { autofillDemo, autofillAllOneZero, autofillKnockoutDemo, resetPredictions, submitted } = usePredictions()
-  const { availablePools, memberships, myPoolSummaries } = usePools()
+  const { availablePools, userPool } = usePools()
 
   const isAdmin = ADMIN_EMAILS.includes(user?.email ?? '') && !submitted
-  const joinedPoolIds = useMemo(
-    () => new Set(memberships.map((m) => m.pool.id)),
-    [memberships],
-  )
-  const myPools = memberships.map((m) => m.pool)
-  const morePools = availablePools.filter((pool) => !joinedPoolIds.has(pool.id))
-  const summariesByPoolId = useMemo(
-    () => new Map(myPoolSummaries.map((summary) => [summary.pool.id, summary])),
-    [myPoolSummaries],
-  )
+  const myPools = userPool ? [userPool] : []
+  const morePools = availablePools.filter((pool) => pool.id !== userPool?.id)
+  const summariesByPoolId = undefined
 
   useEffect(() => {
     if (!mobileOpen) return
@@ -421,7 +414,7 @@ function PoolsDropdown({
   onOpenChange: (open: boolean) => void
   myPools: Pool[]
   morePools: Pool[]
-  summariesByPoolId: Map<
+  summariesByPoolId?: Map<
     string,
     {
       submitted: boolean
@@ -505,7 +498,7 @@ function MobilePoolsSection({
 }: {
   myPools: Pool[]
   morePools: Pool[]
-  summariesByPoolId: Map<
+  summariesByPoolId?: Map<
     string,
     {
       submitted: boolean
