@@ -1,7 +1,10 @@
 import { fetchLiveMatches, type LiveMatch } from '@/lib/espn/matches'
 import { MatchesList } from '@/components/matches/matches-list'
+import { syncResultsIfStale } from '@/lib/sync/sync-results'
 
 export default async function MatchesPage() {
+  await syncResultsIfStale()
+
   let matches: LiveMatch[] = []
   let error: string | null = null
 
