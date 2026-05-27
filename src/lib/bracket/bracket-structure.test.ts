@@ -47,7 +47,6 @@ describe('generateKnockoutBracket', () => {
     const matches = generateKnockoutBracket(
       allStandings,
       rankedThirds.map((entry) => entry.team.groupId),
-      rankedThirds,
     )
 
     expect(matches.find((match) => match.id === 'R32-11')?.teamBId).toBe(allStandings.H[2].team.id)
@@ -58,7 +57,6 @@ describe('generateKnockoutBracket', () => {
     const swappedMatches = generateKnockoutBracket(
       allStandings,
       swappedThirds.map((entry) => entry.team.groupId),
-      swappedThirds,
     )
 
     expect(swappedMatches.find((match) => match.id === 'R32-11')?.teamBId).toBe(allStandings.H[2].team.id)
