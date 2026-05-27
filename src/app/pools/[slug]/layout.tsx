@@ -44,9 +44,9 @@ export default function PoolScopedLayout({ children, params }: Props) {
     )
   }
 
-  const predictHref = `/pools/${slug}/predict/groups`
+  const predictHref = '/predict/groups'
   const standingsHref = `/pools/${slug}/dashboard`
-  const isPredictActive = pathname.startsWith(`/pools/${slug}/predict`)
+  const isPredictActive = pathname.startsWith('/predict')
   const isStandingsActive = pathname.startsWith(`/pools/${slug}/dashboard`)
 
   return (

@@ -23,14 +23,14 @@ export function rewritePoolPathForSlug(
 }
 
 export function resolvePoolPredictionLandingPath(
-  slug: string,
+  _slug: string,
   summary?: PoolPredictionLandingSummary,
 ): string {
-  if (summary?.submitted) return `/pools/${slug}/predict/summary`
+  if (summary?.submitted) return '/predict/summary'
   if ((summary?.groupPredictionCount ?? 0) >= COMPLETE_GROUP_PREDICTION_COUNT) {
-    return `/pools/${slug}/predict/bracket`
+    return '/predict/bracket'
   }
-  return `/pools/${slug}/predict/groups`
+  return '/predict/groups'
 }
 
 /**
@@ -40,10 +40,7 @@ export function resolvePoolPredictionLandingPath(
  */
 export function isNavLinkActive(linkHref: string, pathname: string): boolean {
   if (linkHref === '/predict') {
-    return (
-      pathname === '/predict' ||
-      /^\/pools\/[^/]+\/predict(\/|$)/.test(pathname)
-    )
+    return pathname === '/predict' || pathname.startsWith('/predict/')
   }
   if (linkHref === '/dashboard') {
     return (

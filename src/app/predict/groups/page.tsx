@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
-import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { GroupMatchCard } from '@/components/prediction/group-match-card'
@@ -161,7 +160,6 @@ function MiniStandings({
 }
 
 export default function GroupsPage() {
-  const { slug } = useParams<{ slug: string }>()
   const [selectedGroup, setSelectedGroup] = useState<string>('A')
   const {
     groupPredictions,
@@ -193,7 +191,7 @@ export default function GroupsPage() {
         </p>
         {allComplete && (
           <div className="mt-3">
-            <Link href={`/pools/${slug}/predict/standings`}>
+            <Link href="/predict/thirds">
               <Button size="sm">Next: Best 3rds</Button>
             </Link>
           </div>
@@ -291,7 +289,7 @@ export default function GroupsPage() {
             </div>
 
             {allComplete && (
-              <Link href={`/pools/${slug}/predict/standings`} className="w-full sm:w-auto">
+              <Link href="/predict/thirds" className="w-full sm:w-auto">
                 <Button className="w-full sm:w-auto">Continue to Best 3rds</Button>
               </Link>
             )}

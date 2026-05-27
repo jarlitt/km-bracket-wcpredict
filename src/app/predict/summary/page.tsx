@@ -1,7 +1,6 @@
 'use client'
 
 import { useMemo } from 'react'
-import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
@@ -17,8 +16,7 @@ import Link from 'next/link'
 import { TeamFlag } from '@/components/team-flag'
 
 export default function SummaryPage() {
-  const { slug } = useParams<{ slug: string }>()
-  const basePath = `/pools/${slug}/predict`
+  const basePath = '/predict'
   const {
     groupPredictions,
     knockoutPredictions,

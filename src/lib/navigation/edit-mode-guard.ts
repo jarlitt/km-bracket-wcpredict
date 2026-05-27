@@ -4,7 +4,7 @@ interface EditNavigationGuardInput {
   destinationHref: string
 }
 
-const POOL_PREDICT_PATH_PATTERN = /^\/pools\/([^/]+)\/predict(?:\/|$)/
+const PREDICT_PATH_PATTERN = /^\/predict(?:\/|$)/
 
 function pathnameFromHref(href: string): string | null {
   try {
@@ -21,16 +21,13 @@ export function shouldPromptForEditNavigation({
 }: EditNavigationGuardInput): boolean {
   if (!editingSubmission) return false
 
-  const currentPoolMatch = currentPathname.match(POOL_PREDICT_PATH_PATTERN)
-  if (!currentPoolMatch) return false
+  if (!PREDICT_PATH_PATTERN.test(currentPathname)) return false
 
   const destinationPathname = pathnameFromHref(destinationHref)
   if (!destinationPathname) return true
 
-  const currentPredictionBasePath = `/pools/${currentPoolMatch[1]}/predict`
-
   return (
-    destinationPathname !== currentPredictionBasePath &&
-    !destinationPathname.startsWith(`${currentPredictionBasePath}/`)
+    destinationPathname !== '/predict' &&
+    !destinationPathname.startsWith('/predict/')
   )
 }

@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { usePredictions } from '@/context/predictions-context'
-import { usePools } from '@/context/pool-context'
 import { Progress } from '@/components/ui/progress'
 
 export function PredictionBanner() {
@@ -14,12 +13,8 @@ export function PredictionBanner() {
     predictionsLocked,
     completedGroups,
   } = usePredictions()
-  const { userPool } = usePools()
 
-  const fallback = '/predict'
-  const poolBase = userPool
-    ? `/pools/${userPool.slug}/predict`
-    : fallback
+  const basePath = '/predict'
 
   if (submitted) {
     return (
@@ -35,7 +30,7 @@ export function PredictionBanner() {
                 : 'You can still edit and resubmit until the first match starts.'}
             </p>
           </div>
-          <Link href={userPool ? `${poolBase}/summary` : fallback}>
+          <Link href={`${basePath}/summary`}>
             <Button variant="outline" size="sm" className="shrink-0">
               View Summary
             </Button>
@@ -58,17 +53,17 @@ export function PredictionBanner() {
   if (!allGroupsDone) {
     nextStep = {
       label: 'Continue Group Predictions',
-      href: userPool ? `${poolBase}/groups` : fallback,
+      href: `${basePath}/groups`,
     }
   } else if (!allKnockoutDone) {
     nextStep = {
       label: 'Fill Knockout Bracket',
-      href: userPool ? `${poolBase}/bracket` : fallback,
+      href: `${basePath}/bracket`,
     }
   } else {
     nextStep = {
       label: 'Submit Predictions',
-      href: userPool ? `${poolBase}/bracket` : fallback,
+      href: `${basePath}/bracket`,
     }
   }
 
@@ -79,7 +74,6 @@ export function PredictionBanner() {
           <div>
             <p className="text-sm font-medium">Predictions in progress</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {userPool ? `${userPool.name} · ` : ''}
               Groups: {totalGroupPredictions}/72 &middot; Knockout:{' '}
               {totalKnockoutPredictions}/32
             </p>

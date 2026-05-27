@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useParams, usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { AuthModal } from '@/components/auth/auth-modal'
@@ -31,7 +31,7 @@ const TOTAL_KNOCKOUT_MATCHES = 32
 
 const STEP_DEFS = [
   { suffix: '/predict/groups', label: 'Group Matches', step: 1 },
-  { suffix: '/predict/standings', label: 'Best 3rds', step: 2 },
+  { suffix: '/predict/thirds', label: 'Best 3rds', step: 2 },
   { suffix: '/predict/bracket', label: 'Knockout Bracket', step: 3 },
   { suffix: '/predict/summary', label: 'Summary', step: 4 },
 ] as const
@@ -43,7 +43,6 @@ export default function PredictLayout({
 }) {
   const pathname = usePathname()
   const router = useRouter()
-  const { slug } = useParams<{ slug: string }>()
   const { user, loading: authLoading } = useAuth()
   const {
     totalGroupPredictions,
@@ -60,7 +59,7 @@ export default function PredictLayout({
   const [authOpen, setAuthOpen] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [pendingSubmitAfterAuth, setPendingSubmitAfterAuth] = useState(() =>
-    readPendingSubmit(slug),
+    readPendingSubmit(),
   )
   const [pendingNavigationHref, setPendingNavigationHref] = useState<
     string | null
@@ -74,21 +73,17 @@ export default function PredictLayout({
 
   const steps = STEP_DEFS.map((s) => ({
     ...s,
-    href: `/pools/${slug}${s.suffix}`,
+    href: s.suffix,
   }))
 
   const groupsDone = totalGroupPredictions >= TOTAL_GROUP_MATCHES
   const bracketDone = totalKnockoutPredictions >= TOTAL_KNOCKOUT_MATCHES
-  const summaryHref = predictSummaryHref(slug)
+  const summaryHref = predictSummaryHref()
 
-  // Data-driven completion, evaluated independently per step. Once submitted,
-  // every step is locked-in and shown as complete regardless of which step
-  // the user is currently viewing. Best 3rds is derived from groups, with
-  // manual input only when score-only third-place ties remain.
   const isStepCompleted = (suffix: string): boolean => {
     if (submitted) return true
     if (suffix === '/predict/groups') return groupsDone
-    if (suffix === '/predict/standings') return groupsDone
+    if (suffix === '/predict/thirds') return groupsDone
     if (suffix === '/predict/bracket') return bracketDone
     if (suffix === '/predict/summary') return submitted
     return false
@@ -124,7 +119,7 @@ export default function PredictLayout({
 
     if (!user) {
       attemptedAuthSubmitRef.current = false
-      writePendingSubmit(slug)
+      writePendingSubmit()
       setPendingSubmitAfterAuth(true)
       setAuthOpen(true)
       return
@@ -141,7 +136,7 @@ export default function PredictLayout({
 
     toast.success('Predictions submitted. You can edit them until kickoff.')
     router.push(summaryHref)
-  }, [totalGroupPredictions, totalKnockoutPredictions, user, submitPredictions, slug, router, summaryHref])
+  }, [totalGroupPredictions, totalKnockoutPredictions, user, submitPredictions, router, summaryHref])
 
   const handleCancelEditing = async () => {
     setCancelling(true)
@@ -194,7 +189,7 @@ export default function PredictLayout({
 
     attemptedAuthSubmitRef.current = true
     void Promise.resolve().then(() => {
-      clearPendingSubmit(slug)
+      clearPendingSubmit()
       setPendingSubmitAfterAuth(false)
       setAuthOpen(false)
       handleSubmitFromBanner()
@@ -208,7 +203,6 @@ export default function PredictLayout({
     totalGroupPredictions,
     totalKnockoutPredictions,
     handleSubmitFromBanner,
-    slug,
   ])
 
   useEffect(() => {
@@ -348,9 +342,6 @@ export default function PredictLayout({
                     <div
                       className={cn(
                         'flex-1 h-px opacity-60',
-                        // Connector lights up when both ends are done — that
-                        // way a single complete step in the middle doesn't
-                        // visually orphan from its neighbours.
                         isCompleted && nextCompleted
                           ? 'bg-emerald-500/50'
                           : 'bg-border',
@@ -446,12 +437,12 @@ export default function PredictLayout({
           onOpenChange={(open) => {
             setAuthOpen(open)
             if (!open && !user) {
-              clearPendingSubmit(slug)
+              clearPendingSubmit()
               setPendingSubmitAfterAuth(false)
             }
           }}
           initialMode="signup"
-          returnTo={`/pools/${slug}/predict/bracket`}
+          returnTo="/predict/bracket"
         />
       )}
       <Dialog

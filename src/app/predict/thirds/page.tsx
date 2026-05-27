@@ -1,7 +1,6 @@
 'use client'
 
 import { useMemo } from 'react'
-import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { TieBreakerRulesHelp } from '@/components/prediction/tie-breaker-rules-help'
@@ -93,8 +92,8 @@ function moveTeam(order: number[], index: number, direction: -1 | 1): number[] {
   return next
 }
 
-export default function StandingsPage() {
-  const { slug } = useParams<{ slug: string }>()
+export default function ThirdsPage() {
+  const basePath = '/predict'
   const {
     groupPredictions,
     tieBreakResolutions,
@@ -104,7 +103,6 @@ export default function StandingsPage() {
     submitted,
     editingSubmission,
   } = usePredictions()
-  const basePath = `/pools/${slug}/predict`
   const readOnlySubmitted = submitted && !editingSubmission
 
   const allStandings = useMemo(() => {
@@ -192,7 +190,7 @@ export default function StandingsPage() {
           <p className="text-sm text-blue-100">
             {readOnlySubmitted
               ? 'Some third-place teams are tied around the qualification cutoff. Edit your submission to adjust who advances.'
-              : 'Some third-place teams are tied around the qualification cutoff. Use the arrows to choose who advances. Bracket slots are assigned from FIFA’s matchup table.'}
+              : 'Some third-place teams are tied around the qualification cutoff. Use the arrows to choose who advances. Bracket slots are assigned from FIFA\u2019s matchup table.'}
           </p>
           <TieBreakerRulesHelp type="third-place" />
         </div>

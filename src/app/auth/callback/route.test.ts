@@ -28,11 +28,11 @@ describe('auth callback route', () => {
   it('redirects to the same-origin next path after successful session exchange', async () => {
     exchangeCodeForSession.mockResolvedValue({ error: null })
 
-    const response = await GET(callbackRequest('/pools/world-cup/predict'))
+    const response = await GET(callbackRequest('/predict/groups'))
 
     expect(exchangeCodeForSession).toHaveBeenCalledWith('auth-code')
     expect(response.headers.get('location')).toBe(
-      'https://bracket.example.com/pools/world-cup/predict',
+      'https://bracket.example.com/predict/groups',
     )
   })
 
@@ -55,7 +55,7 @@ describe('auth callback route', () => {
   it('redirects failed session exchanges to the login page', async () => {
     exchangeCodeForSession.mockResolvedValue({ error: new Error('Invalid code') })
 
-    const response = await GET(callbackRequest('/pools/world-cup/predict'))
+    const response = await GET(callbackRequest('/predict/groups'))
 
     expect(response.headers.get('location')).toBe('https://bracket.example.com/auth/login')
   })

@@ -11,7 +11,7 @@ export function JoinedPoolCard({
   poolName: string
   poolSlug: string
 }) {
-  const href = `/pools/${poolSlug}/predict/groups`
+  const href = '/predict/groups'
 
   return (
     <Link href={href} className="group block h-full">
@@ -77,7 +77,7 @@ export function NotJoinedPoolCard({
   }
   return (
     <Link
-      href={`/pools/${poolSlug}/predict/groups`}
+      href="/predict/groups"
       className="group block h-full"
       aria-label={ariaLabel ?? `Preview ${poolName}`}
     >

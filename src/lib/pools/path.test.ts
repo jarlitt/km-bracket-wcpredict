@@ -43,12 +43,10 @@ describe('rewritePoolPathForSlug', () => {
 })
 
 describe('isNavLinkActive', () => {
-  it('matches /predict for the picker and pool-scoped predict subtree', () => {
+  it('matches /predict for the picker and predict subtree', () => {
     expect(isNavLinkActive('/predict', '/predict')).toBe(true)
-    expect(isNavLinkActive('/predict', '/pools/spain/predict/groups')).toBe(
-      true,
-    )
-    expect(isNavLinkActive('/predict', '/pools/spain/predict')).toBe(true)
+    expect(isNavLinkActive('/predict', '/predict/groups')).toBe(true)
+    expect(isNavLinkActive('/predict', '/predict/bracket')).toBe(true)
     expect(isNavLinkActive('/predict', '/pools/spain/dashboard')).toBe(false)
     expect(isNavLinkActive('/predict', '/dashboard')).toBe(false)
   })
@@ -92,7 +90,7 @@ describe('resolvePoolPredictionLandingPath', () => {
         groupPredictionCount: 10,
         knockoutPredictionCount: 0,
       }),
-    ).toBe('/pools/spain/predict/summary')
+    ).toBe('/predict/summary')
   })
 
   it('sends unsubmitted pools with incomplete groups to groups', () => {
@@ -102,7 +100,7 @@ describe('resolvePoolPredictionLandingPath', () => {
         groupPredictionCount: 71,
         knockoutPredictionCount: 32,
       }),
-    ).toBe('/pools/spain/predict/groups')
+    ).toBe('/predict/groups')
   })
 
   it('sends unsubmitted pools with complete groups to bracket', () => {
@@ -112,12 +110,12 @@ describe('resolvePoolPredictionLandingPath', () => {
         groupPredictionCount: 72,
         knockoutPredictionCount: 0,
       }),
-    ).toBe('/pools/spain/predict/bracket')
+    ).toBe('/predict/bracket')
   })
 
   it('defaults preview pools to groups when no summary exists', () => {
     expect(resolvePoolPredictionLandingPath('spain')).toBe(
-      '/pools/spain/predict/groups',
+      '/predict/groups',
     )
   })
 })

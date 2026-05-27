@@ -10,8 +10,8 @@ describe('safeNextPath', () => {
 
   it('accepts same-origin relative paths', () => {
     expect(safeNextPath('/predict')).toBe('/predict')
-    expect(safeNextPath('/pools/spain/predict/bracket?submit=1')).toBe(
-      '/pools/spain/predict/bracket?submit=1',
+    expect(safeNextPath('/predict/bracket?submit=1')).toBe(
+      '/predict/bracket?submit=1',
     )
   })
 

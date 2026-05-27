@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useEffect, useMemo, useCallback, useRef, useState } from 'react'
-import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { AuthModal } from '@/components/auth/auth-modal'
 import { BracketView } from '@/components/prediction/bracket-view'
@@ -27,13 +27,12 @@ import Link from 'next/link'
 function BracketPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { slug } = useParams<{ slug: string }>()
   const { user, loading: authLoading } = useAuth()
-  const basePath = `/pools/${slug}/predict`
+  const basePath = '/predict'
   const wantsSubmit = searchParams.get('submit') === '1'
   const [authOpen, setAuthOpen] = useState(false)
   const [pendingSubmitAfterAuth, setPendingSubmitAfterAuth] = useState(() =>
-    readPendingSubmit(slug),
+    readPendingSubmit(),
   )
   const {
     groupPredictions,
@@ -108,10 +107,8 @@ function BracketPageInner() {
       return
     }
 
-    // Anonymous? Ask for auth in context; once auth resolves, this page
-    // auto-completes the pending submission without changing route.
     if (!user) {
-      writePendingSubmit(slug)
+      writePendingSubmit()
       setPendingSubmitAfterAuth(true)
       setAuthOpen(true)
       return
@@ -138,17 +135,12 @@ function BracketPageInner() {
     totalGroupPredictions,
     totalKnockoutPredictions,
     user,
-    slug,
     basePath,
     router,
     submitPredictions,
     displayedMatchups,
   ])
 
-  // Auto-submit when returning from signup/login. We wait for auth to resolve, the
-  // DB hydrate to finish, and both prediction sets to be complete. The
-  // `attemptedRef` guard ensures we only fire once per mount even if effects
-  // re-run.
   const attemptedRef = useRef(false)
   useEffect(() => {
     if (!wantsSubmit && !pendingSubmitAfterAuth) return
@@ -158,13 +150,9 @@ function BracketPageInner() {
     if (predictionsLocked || submitting) return
     if (!allGroupsComplete || !allKnockoutComplete) return
     attemptedRef.current = true
-    // Strip the query so we don't auto-submit again if the user navigates
-    // back here later.
     if (wantsSubmit) router.replace(`${basePath}/bracket`)
-    // Defer to a microtask so the setSubmitting(true) inside handleSubmit
-    // doesn't run synchronously inside this effect (react-hooks/set-state-in-effect).
     void Promise.resolve().then(() => {
-      clearPendingSubmit(slug)
+      clearPendingSubmit()
       setPendingSubmitAfterAuth(false)
       setAuthOpen(false)
       handleSubmit()
@@ -183,7 +171,6 @@ function BracketPageInner() {
     basePath,
     handleSubmit,
     router,
-    slug,
   ])
 
   if (!allGroupsComplete) {
@@ -215,7 +202,7 @@ function BracketPageInner() {
             : `Click on a team to pick the winner. Picks: ${totalKnockoutPredictions}/32`}
         </p>
         <div className="flex flex-wrap items-center gap-2 mt-3">
-          <Link href={`${basePath}/standings`}>
+          <Link href={`${basePath}/thirds`}>
             <Button variant="outline" size="sm">Back to Best 3rds</Button>
           </Link>
           {submitted ? (
@@ -252,7 +239,7 @@ function BracketPageInner() {
       />
 
       <div className="flex gap-2 justify-between items-center">
-        <Link href={`${basePath}/standings`}>
+        <Link href={`${basePath}/thirds`}>
           <Button variant="outline" size="sm">Back to Best 3rds</Button>
         </Link>
         {submitted ? (
@@ -277,7 +264,7 @@ function BracketPageInner() {
         onOpenChange={(open) => {
           setAuthOpen(open)
           if (!open && !user) {
-            clearPendingSubmit(slug)
+            clearPendingSubmit()
             setPendingSubmitAfterAuth(false)
           }
         }}
@@ -290,8 +277,6 @@ function BracketPageInner() {
 }
 
 export default function BracketPage() {
-  // useSearchParams reads the URL on the client; wrap in Suspense so the
-  // surrounding tree can still pre-render.
   return (
     <Suspense fallback={null}>
       <BracketPageInner />
