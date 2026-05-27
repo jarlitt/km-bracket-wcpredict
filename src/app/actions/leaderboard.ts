@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { syncResultsIfStale } from '@/lib/sync/sync-results'
 
 export interface LeaderboardEntry {
   userId: string
@@ -29,6 +30,9 @@ interface ScoreRow {
 
 export async function getLeaderboard(poolId: string): Promise<LeaderboardEntry[]> {
   if (!poolId) return []
+
+  await syncResultsIfStale()
+
   const supabase = await createClient()
 
   const [membersRes, scoresRes] = await Promise.all([
