@@ -36,6 +36,7 @@ function scoreGroupMatches(
     const pred = predictions.groupPredictions[match.id];
     const result = actual.groupResults[match.id];
     if (!pred || !result) continue;
+    if (typeof pred.scoreA !== 'number' || typeof pred.scoreB !== 'number') continue;
 
     const predOutcome = getMatchOutcome(pred.scoreA, pred.scoreB);
     const actualOutcome = getMatchOutcome(result.scoreA, result.scoreB);
@@ -66,7 +67,9 @@ function scoreGroupPositions(
     const actualStandings = actual.actualGroupStandings[groupId];
     if (!actualStandings) continue;
 
-    const predictedStandings: TeamStanding[] = calculateGroupStandings(groupId, predictions.groupPredictions);
+    const predictedStandings: TeamStanding[] = calculateGroupStandings(groupId, predictions.groupPredictions, {
+      tieBreakResolutions: predictions.tieBreakResolutions ?? {},
+    });
 
     for (let pos = 0; pos < 3; pos++) {
       if (

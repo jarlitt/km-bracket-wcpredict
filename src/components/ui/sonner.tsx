@@ -37,8 +37,15 @@ const Toaster = ({ ...props }: ToasterProps) => {
         } as React.CSSProperties
       }
       toastOptions={{
+        duration: 6500,
         classNames: {
-          toast: "cn-toast",
+          toast: "cn-toast !border-border/70 !bg-popover !text-popover-foreground !shadow-2xl !ring-1 !ring-foreground/10",
+          title: "!font-semibold",
+          description: "!text-muted-foreground",
+          success: "!border-emerald-500/40 !bg-emerald-950/80 !text-emerald-100",
+          error: "!border-red-500/50 !bg-red-950/80 !text-red-100",
+          warning: "!border-amber-500/50 !bg-amber-950/80 !text-amber-100",
+          info: "!border-sky-500/40 !bg-sky-950/80 !text-sky-100",
         },
       }}
       {...props}

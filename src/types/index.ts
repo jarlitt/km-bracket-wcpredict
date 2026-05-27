@@ -3,6 +3,8 @@ export interface Team {
   name: string;
   code: string;
   flag: string;
+  /** Filename slug for the SVG flag in /public/country-flags/Countries/<slug>.svg */
+  flagSlug: string;
   groupId: string;
   fifaRanking: number;
 }
@@ -18,8 +20,8 @@ export interface GroupMatch {
 }
 
 export interface GroupPrediction {
-  scoreA: number;
-  scoreB: number;
+  scoreA?: number;
+  scoreB?: number;
 }
 
 export interface TeamStanding {
@@ -51,9 +53,16 @@ export interface KnockoutPrediction {
   winnerId: number;
 }
 
+export interface KnockoutMatchup {
+  teamAId: number | null;
+  teamBId: number | null;
+}
+
 export interface UserPredictions {
   groupPredictions: Record<number, GroupPrediction>;
   knockoutPredictions: Record<string, number>;
+  knockoutMatchups?: Record<string, KnockoutMatchup>;
+  tieBreakResolutions?: Record<string, number[]>;
   submitted: boolean;
 }
 
@@ -75,3 +84,23 @@ export interface ScoreDetail {
 export type GroupId =
   | 'A' | 'B' | 'C' | 'D' | 'E' | 'F'
   | 'G' | 'H' | 'I' | 'J' | 'K' | 'L';
+
+export type PoolType = 'office';
+export type PoolVisibility = 'public' | 'private';
+export type PoolRole = 'member' | 'admin';
+
+export interface Pool {
+  id: string;
+  name: string;
+  slug: string;
+  type: PoolType;
+  visibility: PoolVisibility;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface PoolMembership {
+  pool: Pool;
+  role: PoolRole;
+  joinedAt: string;
+}

@@ -4,11 +4,12 @@ import { Input } from '@/components/ui/input'
 import type { Team, GroupMatch } from '@/types'
 import { getTeamById } from '@/lib/data/teams'
 import { useLocalKickoff } from '@/lib/format-kickoff'
+import { TeamFlag } from '@/components/team-flag'
 
 interface GroupMatchCardProps {
   match: GroupMatch
-  prediction?: { scoreA: number; scoreB: number }
-  onPredictionChange: (matchId: number, scoreA: number, scoreB: number) => void
+  prediction?: { scoreA?: number; scoreB?: number }
+  onPredictionChange: (matchId: number, scoreA: number | undefined, scoreB: number | undefined) => void
   disabled?: boolean
 }
 
@@ -20,19 +21,29 @@ function TeamColumn({
 }: {
   team: Team
   score: number | undefined
-  onChange: (value: string) => void
+  onChange: (value: number | undefined) => void
   disabled?: boolean
 }) {
   return (
     <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
-      <span className="text-3xl sm:text-4xl">{team.flag}</span>
+      <TeamFlag team={team} size={40} className="sm:size-12" />
       <p className="font-medium text-xs sm:text-sm text-center leading-tight w-full truncate">{team.name}</p>
       <Input
         type="number"
         min={0}
         max={99}
         value={score ?? ''}
-        onChange={e => onChange(e.target.value)}
+        onChange={e => {
+          const raw = e.target.value
+          if (raw === '') {
+            onChange(undefined)
+            return
+          }
+          if (raw.length > 1 && raw.startsWith('0')) return
+          const parsed = parseInt(raw, 10)
+          if (Number.isNaN(parsed)) return
+          onChange(Math.max(0, Math.min(99, parsed)))
+        }}
         disabled={disabled}
         className="w-14 h-12 text-center text-xl font-bold p-0 mt-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         placeholder="-"
@@ -46,13 +57,11 @@ export function GroupMatchCard({ match, prediction, onPredictionChange, disabled
   const teamB = getTeamById(match.teamBId)
   const kickoff = useLocalKickoff(match.date, match.time)
 
-  const handleScoreChange = (side: 'A' | 'B', value: string) => {
-    if (value.length > 1 && value.startsWith('0')) return
-    const numValue = value === '' ? 0 : Math.max(0, Math.min(99, parseInt(value) || 0))
+  const handleScoreChange = (side: 'A' | 'B', value: number | undefined) => {
     if (side === 'A') {
-      onPredictionChange(match.id, numValue, prediction?.scoreB ?? 0)
+      onPredictionChange(match.id, value, prediction?.scoreB)
     } else {
-      onPredictionChange(match.id, prediction?.scoreA ?? 0, numValue)
+      onPredictionChange(match.id, prediction?.scoreA, value)
     }
   }
 

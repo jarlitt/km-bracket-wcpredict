@@ -1,10 +1,11 @@
 'use client'
 
-import { useRef, useState, useEffect, useCallback } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { getTeamById } from '@/lib/data/teams'
 import { useLocalKickoff } from '@/lib/format-kickoff'
 import type { KnockoutMatch } from '@/types'
+import { TeamFlag } from '@/components/team-flag'
 
 interface BracketViewProps {
   matches: KnockoutMatch[]
@@ -15,15 +16,24 @@ interface BracketViewProps {
 }
 
 function useIsMobile(breakpoint = 768) {
-  const [mobile, setMobile] = useState(false)
-  useEffect(() => {
-    const mq = window.matchMedia(`(max-width: ${breakpoint - 1}px)`)
-    setMobile(mq.matches)
-    const handler = (e: MediaQueryListEvent) => setMobile(e.matches)
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
+  // useSyncExternalStore reads matchMedia synchronously without a setState
+  // round-trip, which avoids react-hooks/set-state-in-effect.
+  const subscribe = useCallback(
+    (callback: () => void) => {
+      if (typeof window === 'undefined') return () => {}
+      const mq = window.matchMedia(`(max-width: ${breakpoint - 1}px)`)
+      mq.addEventListener('change', callback)
+      return () => mq.removeEventListener('change', callback)
+    },
+    [breakpoint],
+  )
+  const getSnapshot = useCallback(() => {
+    if (typeof window === 'undefined') return false
+    return window.matchMedia(`(max-width: ${breakpoint - 1}px)`).matches
   }, [breakpoint])
-  return mobile
+  const getServerSnapshot = useCallback(() => false, [])
+
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
 }
 
 function TeamSlot({
@@ -57,7 +67,7 @@ function TeamSlot({
     >
       {team ? (
         <>
-          <span className="text-sm">{team.flag}</span>
+          <TeamFlag team={team} size={14} />
           <span className="truncate">{team.code}</span>
           {seed && <span className="text-[9px] text-muted-foreground/60 ml-auto shrink-0">{seed}</span>}
         </>

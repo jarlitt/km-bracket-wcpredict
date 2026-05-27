@@ -8,7 +8,7 @@ const geistSans = Geist({ variable: "--font-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "KingMakers WC2026 Predictor",
+  title: "World Cup 2026 Predictor",
   description: "Predict every match of the FIFA World Cup 2026",
 };
 

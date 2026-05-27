@@ -1,16 +1,16 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useSyncExternalStore } from 'react'
 
 const MONTHS: Record<string, number> = {
   Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
   Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
 }
 
-function madridToLocal(date: string, time: string): { date: string; time: string } {
+function utcToLocal(date: string, time: string): { date: string; time: string } {
   const [day, mon] = date.split(' ')
   const [h, m] = time.split(':').map(Number)
-  const utc = new Date(Date.UTC(2026, MONTHS[mon], parseInt(day), h - 2, m))
+  const utc = new Date(Date.UTC(2026, MONTHS[mon], parseInt(day), h, m))
 
   return {
     date: utc.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
@@ -18,19 +18,32 @@ function madridToLocal(date: string, time: string): { date: string; time: string
   }
 }
 
+function subscribeNoop() {
+  return () => {}
+}
+
+function clientSnapshot() {
+  return true
+}
+
+function serverSnapshot() {
+  return false
+}
+
 /**
- * Converts stored Madrid (CEST/UTC+2) date+time to the user's local timezone.
- * Returns Madrid time during SSR, swaps to local on hydration.
+ * Converts stored UTC date+time to the user's local timezone.
+ * Returns the raw UTC string during SSR, swaps to local on hydration.
  */
 export function useLocalKickoff(date?: string, time?: string) {
-  const [local, setLocal] = useState<{ date: string; time: string } | null>(null)
-
-  useEffect(() => {
-    if (date && time) {
-      setLocal(madridToLocal(date, time))
-    }
-  }, [date, time])
+  // useSyncExternalStore gives us SSR/client divergence without needing
+  // useEffect+setState, which avoids react-hooks/set-state-in-effect.
+  const isClient = useSyncExternalStore(
+    subscribeNoop,
+    clientSnapshot,
+    serverSnapshot,
+  )
 
   if (!date || !time) return null
-  return local ?? { date, time }
+  if (!isClient) return { date, time }
+  return utcToLocal(date, time)
 }

@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { buttonVariants } from '@/components/ui/button'
+import { Suspense, useState } from 'react'
+import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -10,13 +11,15 @@ import { useAuth } from '@/context/auth-context'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { updatePassword } = useAuth()
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [errors, setErrors] = useState<{ password?: string; confirm?: string; general?: string }>({})
   const [loading, setLoading] = useState(false)
+  const recoveryError = searchParams.get('error')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -52,9 +55,26 @@ export default function ResetPasswordPage() {
         <CardHeader className="text-center">
           <div className="text-3xl mb-2">🔒</div>
           <CardTitle className="text-xl">Set new password</CardTitle>
-          <CardDescription>Enter your new password below</CardDescription>
+          <CardDescription>
+            {recoveryError
+              ? 'This reset link is invalid or expired'
+              : 'Enter your new password below'}
+          </CardDescription>
         </CardHeader>
         <CardContent>
+          {recoveryError ? (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-center">
+                <p className="text-sm text-amber-300">
+                  Password reset links can only be used once and may expire.
+                  Request a fresh link to continue.
+                </p>
+              </div>
+              <Link href="/auth/forgot-password">
+                <Button className="w-full">Send a new reset link</Button>
+              </Link>
+            </div>
+          ) : (
           <form onSubmit={handleSubmit} noValidate className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="password">New password</Label>
@@ -89,8 +109,17 @@ export default function ResetPasswordPage() {
               {loading ? 'Updating...' : 'Update password'}
             </button>
           </form>
+          )}
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={null}>
+      <ResetPasswordForm />
+    </Suspense>
   )
 }

@@ -2,6 +2,7 @@
 
 import type { TeamStanding } from '@/types'
 import { cn } from '@/lib/utils'
+import { TeamFlag } from '@/components/team-flag'
 
 interface GroupStandingsTableProps {
   groupId: string
@@ -21,7 +22,7 @@ export function GroupStandingsTable({ groupId, standings, qualifiedThirdGroups }
       <div className="relative overflow-x-auto">
         <table className="w-full text-sm table-fixed">
           <colgroup>
-            <col className="w-[160px]" />
+            <col className="w-[120px]" />
             <col className="w-[32px]" />
             <col className="w-[32px]" />
             <col className="w-[32px]" />
@@ -40,27 +41,37 @@ export function GroupStandingsTable({ groupId, standings, qualifiedThirdGroups }
               <th className="text-center text-xs px-0.5 py-2">W</th>
               <th className="text-center text-xs px-0.5 py-2">D</th>
               <th className="text-center text-xs px-0.5 py-2">L</th>
-              <th className="text-center text-xs px-0.5 py-2">GF</th>
-              <th className="text-center text-xs px-0.5 py-2">GA</th>
+              <th className="hidden text-center text-xs px-0.5 py-2 sm:table-cell">GF</th>
+              <th className="hidden text-center text-xs px-0.5 py-2 sm:table-cell">GA</th>
               <th className="text-center text-xs px-0.5 py-2">GD</th>
               <th className="text-center text-xs font-bold px-0.5 py-2">Pts</th>
             </tr>
           </thead>
           <tbody>
             {standings.map((standing, index) => {
-              const qualifies = index < 2 || (index === 2 && isThirdQualified)
+              const qualifiesTop2 = index < 2
+              const qualifiesBestThird = index === 2 && isThirdQualified
+              const rowBg = qualifiesTop2
+                ? 'bg-emerald-500/10 text-emerald-100'
+                : qualifiesBestThird
+                  ? 'bg-blue-500/10 text-blue-100'
+                  : 'bg-[color-mix(in_oklch,var(--background),var(--card)_50%)]'
               return (
                 <tr
                   key={standing.team.id}
                   className={cn(
                     'border-b border-border/20',
-                    index < 2 && 'bg-emerald-500/5',
-                    index === 2 && isThirdQualified && 'bg-blue-500/5',
+                    rowBg,
                   )}
                 >
-                  <td className="sticky left-0 z-10 pl-3 pr-2 py-2 overflow-hidden bg-card shadow-[2px_0_4px_-1px_rgba(0,0,0,0.4)]">
+                  <td
+                    className={cn(
+                      'sticky left-0 z-10 pl-3 pr-2 py-2 overflow-hidden shadow-[2px_0_4px_-1px_rgba(0,0,0,0.4)]',
+                      rowBg,
+                    )}
+                  >
                     <div className="flex items-center gap-1.5 overflow-hidden">
-                      <span className="text-base shrink-0">{standing.team.flag}</span>
+                      <TeamFlag team={standing.team} size={16} />
                       <span className="text-xs font-medium truncate">{standing.team.name}</span>
                     </div>
                   </td>
@@ -68,8 +79,8 @@ export function GroupStandingsTable({ groupId, standings, qualifiedThirdGroups }
                   <td className="text-center text-xs px-0.5 py-2">{standing.won}</td>
                   <td className="text-center text-xs px-0.5 py-2">{standing.drawn}</td>
                   <td className="text-center text-xs px-0.5 py-2">{standing.lost}</td>
-                  <td className="text-center text-xs px-0.5 py-2">{standing.goalsFor}</td>
-                  <td className="text-center text-xs px-0.5 py-2">{standing.goalsAgainst}</td>
+                  <td className="hidden text-center text-xs px-0.5 py-2 sm:table-cell">{standing.goalsFor}</td>
+                  <td className="hidden text-center text-xs px-0.5 py-2 sm:table-cell">{standing.goalsAgainst}</td>
                   <td className="text-center text-xs px-0.5 py-2">
                     {standing.goalDifference > 0 ? '+' : ''}{standing.goalDifference}
                   </td>

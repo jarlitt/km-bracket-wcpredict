@@ -3,21 +3,44 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { usePredictions } from '@/context/predictions-context'
+import { usePools } from '@/context/pool-context'
 import { Progress } from '@/components/ui/progress'
 
 export function PredictionBanner() {
-  const { totalGroupPredictions, totalKnockoutPredictions, submitted, completedGroups } = usePredictions()
+  const {
+    totalGroupPredictions,
+    totalKnockoutPredictions,
+    submitted,
+    predictionsLocked,
+    completedGroups,
+  } = usePredictions()
+  const { activePool } = usePools()
+
+  // No active pool selected (yet). Send the user to the picker so they can
+  // pick which pool to predict in.
+  const fallback = '/predict'
+  const poolBase = activePool
+    ? `/pools/${activePool.slug}/predict`
+    : fallback
 
   if (submitted) {
     return (
       <div className="mx-auto max-w-3xl px-4 pt-6">
         <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-medium text-emerald-300">Predictions submitted</p>
-            <p className="text-xs text-emerald-400/70 mt-0.5">Your predictions are locked in. Good luck!</p>
+            <p className="text-sm font-medium text-emerald-300">
+              Predictions submitted
+            </p>
+            <p className="text-xs text-emerald-400/70 mt-0.5">
+              {predictionsLocked
+                ? 'Your predictions are locked in. Good luck!'
+                : 'You can still edit and resubmit until the first match starts.'}
+            </p>
           </div>
-          <Link href="/predict/summary">
-            <Button variant="outline" size="sm" className="shrink-0">View Summary</Button>
+          <Link href={activePool ? `${poolBase}/summary` : fallback}>
+            <Button variant="outline" size="sm" className="shrink-0">
+              View Summary
+            </Button>
           </Link>
         </div>
       </div>
@@ -35,11 +58,20 @@ export function PredictionBanner() {
 
   let nextStep: { label: string; href: string }
   if (!allGroupsDone) {
-    nextStep = { label: 'Continue Group Predictions', href: '/predict/groups' }
+    nextStep = {
+      label: 'Continue Group Predictions',
+      href: activePool ? `${poolBase}/groups` : fallback,
+    }
   } else if (!allKnockoutDone) {
-    nextStep = { label: 'Fill Knockout Bracket', href: '/predict/bracket' }
+    nextStep = {
+      label: 'Fill Knockout Bracket',
+      href: activePool ? `${poolBase}/bracket` : fallback,
+    }
   } else {
-    nextStep = { label: 'Submit Predictions', href: '/predict/bracket' }
+    nextStep = {
+      label: 'Submit Predictions',
+      href: activePool ? `${poolBase}/bracket` : fallback,
+    }
   }
 
   return (
@@ -49,16 +81,22 @@ export function PredictionBanner() {
           <div>
             <p className="text-sm font-medium">Predictions in progress</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Groups: {totalGroupPredictions}/72 &middot; Knockout: {totalKnockoutPredictions}/32
+              {activePool ? `${activePool.name} · ` : ''}
+              Groups: {totalGroupPredictions}/72 &middot; Knockout:{' '}
+              {totalKnockoutPredictions}/32
             </p>
           </div>
           <Link href={nextStep.href}>
-            <Button size="sm" className="shrink-0">{nextStep.label}</Button>
+            <Button size="sm" className="shrink-0">
+              {nextStep.label}
+            </Button>
           </Link>
         </div>
         <div className="flex items-center gap-3">
           <Progress value={percent} className="flex-1 h-2" />
-          <span className="text-xs text-muted-foreground whitespace-nowrap">{percent}%</span>
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            {percent}%
+          </span>
         </div>
       </div>
     </div>

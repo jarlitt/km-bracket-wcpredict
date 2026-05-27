@@ -8,11 +8,12 @@ import {
   useCallback,
   type ReactNode,
 } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { safeNextPath } from '@/lib/auth/safe-next'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 
-const PUBLIC_PATHS = ['/auth/login', '/auth/signup', '/auth/forgot-password', '/auth/reset-password']
+export { safeNextPath }
 
 interface User {
   id: string
@@ -23,8 +24,9 @@ interface User {
 interface AuthContextType {
   user: User | null
   loading: boolean
-  login: (email: string, password: string) => Promise<string | null>
-  signup: (email: string, password: string, displayName: string) => Promise<string | null>
+  /** Returns null on success or an error message string. `next` is honored for the post-auth redirect. */
+  login: (email: string, password: string, next?: string) => Promise<string | null>
+  signup: (email: string, password: string, displayName: string, next?: string) => Promise<string | null>
   logout: () => void
   resetPasswordRequest: (email: string) => Promise<string | null>
   updatePassword: (password: string) => Promise<string | null>
@@ -44,7 +46,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
-  const pathname = usePathname()
   const supabase = createClient()
 
   useEffect(() => {
@@ -61,41 +62,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
 
     return () => subscription.unsubscribe()
-  }, [supabase.auth])
+  }, [supabase.auth, router])
 
-  useEffect(() => {
-    if (loading) return
-    const isPublic = PUBLIC_PATHS.some(p => pathname.startsWith(p))
-    if (!user && !isPublic) {
-      router.replace('/auth/login')
-    }
-    if (user && isPublic && !pathname.startsWith('/auth/reset-password')) {
-      router.replace('/')
-    }
-  }, [user, loading, pathname, router])
-
-  const login = useCallback(async (email: string, password: string): Promise<string | null> => {
+  const login = useCallback(async (email: string, password: string, next?: string): Promise<string | null> => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) return error.message
-    router.replace('/')
+    router.replace(safeNextPath(next))
     return null
   }, [supabase.auth, router])
 
-  const signup = useCallback(async (email: string, password: string, displayName: string): Promise<string | null> => {
+  const signup = useCallback(async (email: string, password: string, displayName: string, next?: string): Promise<string | null> => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { display_name: displayName } },
     })
     if (error) return error.message
-    router.replace('/')
+    router.replace(safeNextPath(next))
     return null
   }, [supabase.auth, router])
 
   const logout = useCallback(async () => {
     await supabase.auth.signOut()
     setUser(null)
-    router.replace('/auth/login')
+    router.replace('/')
   }, [supabase.auth, router])
 
   const resetPasswordRequest = useCallback(async (email: string): Promise<string | null> => {
@@ -111,20 +101,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) return error.message
     return null
   }, [supabase.auth])
-
-  const isPublic = PUBLIC_PATHS.some(p => pathname.startsWith(p))
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-muted-foreground text-sm">Loading...</div>
-      </div>
-    )
-  }
-
-  if (!user && !isPublic) {
-    return null
-  }
 
   return (
     <AuthContext value={{ user, loading, login, signup, logout, resetPasswordRequest, updatePassword }}>

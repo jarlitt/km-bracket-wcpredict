@@ -1,130 +1,105 @@
 import type { GroupMatch } from '@/types';
-import { getTeamsByGroup, GROUPS } from './teams';
 
-const INTRA_GROUP_PAIRINGS: [number, number][] = [
-  [0, 1],
-  [2, 3],
-  [0, 2],
-  [1, 3],
-  [0, 3],
-  [1, 2],
+// All kick-off times are UTC. The useLocalKickoff hook converts to the user's local timezone.
+// Fixtures sourced from FIFA.com official schedule (fifa.com/worldcup/scores-fixtures).
+
+export const GROUP_MATCHES: GroupMatch[] = [
+  // ── Group A ──────────────────────────────────────────────
+  { id: 1,  groupId: 'A', teamAId: 1,  teamBId: 2,  matchNumber: 1, date: '11 Jun', time: '19:00' },
+  { id: 2,  groupId: 'A', teamAId: 3,  teamBId: 4,  matchNumber: 2, date: '12 Jun', time: '02:00' },
+  { id: 3,  groupId: 'A', teamAId: 4,  teamBId: 2,  matchNumber: 3, date: '18 Jun', time: '16:00' },
+  { id: 4,  groupId: 'A', teamAId: 1,  teamBId: 3,  matchNumber: 4, date: '19 Jun', time: '01:00' },
+  { id: 5,  groupId: 'A', teamAId: 4,  teamBId: 1,  matchNumber: 5, date: '25 Jun', time: '01:00' },
+  { id: 6,  groupId: 'A', teamAId: 2,  teamBId: 3,  matchNumber: 6, date: '25 Jun', time: '01:00' },
+
+  // ── Group B ──────────────────────────────────────────────
+  { id: 7,  groupId: 'B', teamAId: 5,  teamBId: 6,  matchNumber: 1, date: '12 Jun', time: '19:00' },
+  { id: 8,  groupId: 'B', teamAId: 7,  teamBId: 8,  matchNumber: 2, date: '13 Jun', time: '19:00' },
+  { id: 9,  groupId: 'B', teamAId: 8,  teamBId: 6,  matchNumber: 3, date: '18 Jun', time: '19:00' },
+  { id: 10, groupId: 'B', teamAId: 5,  teamBId: 7,  matchNumber: 4, date: '18 Jun', time: '22:00' },
+  { id: 11, groupId: 'B', teamAId: 8,  teamBId: 5,  matchNumber: 5, date: '24 Jun', time: '19:00' },
+  { id: 12, groupId: 'B', teamAId: 6,  teamBId: 7,  matchNumber: 6, date: '24 Jun', time: '19:00' },
+
+  // ── Group C ──────────────────────────────────────────────
+  { id: 13, groupId: 'C', teamAId: 9,  teamBId: 10, matchNumber: 1, date: '13 Jun', time: '22:00' },
+  { id: 14, groupId: 'C', teamAId: 11, teamBId: 12, matchNumber: 2, date: '14 Jun', time: '01:00' },
+  { id: 15, groupId: 'C', teamAId: 12, teamBId: 10, matchNumber: 3, date: '19 Jun', time: '22:00' },
+  { id: 16, groupId: 'C', teamAId: 9,  teamBId: 11, matchNumber: 4, date: '20 Jun', time: '00:30' },
+  { id: 17, groupId: 'C', teamAId: 12, teamBId: 9,  matchNumber: 5, date: '24 Jun', time: '22:00' },
+  { id: 18, groupId: 'C', teamAId: 10, teamBId: 11, matchNumber: 6, date: '24 Jun', time: '22:00' },
+
+  // ── Group D ──────────────────────────────────────────────
+  { id: 19, groupId: 'D', teamAId: 13, teamBId: 14, matchNumber: 1, date: '13 Jun', time: '01:00' },
+  { id: 20, groupId: 'D', teamAId: 15, teamBId: 16, matchNumber: 2, date: '14 Jun', time: '04:00' },
+  { id: 21, groupId: 'D', teamAId: 13, teamBId: 15, matchNumber: 3, date: '19 Jun', time: '19:00' },
+  { id: 22, groupId: 'D', teamAId: 16, teamBId: 14, matchNumber: 4, date: '20 Jun', time: '03:00' },
+  { id: 23, groupId: 'D', teamAId: 16, teamBId: 13, matchNumber: 5, date: '26 Jun', time: '02:00' },
+  { id: 24, groupId: 'D', teamAId: 14, teamBId: 15, matchNumber: 6, date: '26 Jun', time: '02:00' },
+
+  // ── Group E ──────────────────────────────────────────────
+  { id: 25, groupId: 'E', teamAId: 17, teamBId: 18, matchNumber: 1, date: '14 Jun', time: '17:00' },
+  { id: 26, groupId: 'E', teamAId: 19, teamBId: 20, matchNumber: 2, date: '14 Jun', time: '23:00' },
+  { id: 27, groupId: 'E', teamAId: 17, teamBId: 19, matchNumber: 3, date: '20 Jun', time: '20:00' },
+  { id: 28, groupId: 'E', teamAId: 20, teamBId: 18, matchNumber: 4, date: '21 Jun', time: '00:00' },
+  { id: 29, groupId: 'E', teamAId: 18, teamBId: 19, matchNumber: 5, date: '25 Jun', time: '20:00' },
+  { id: 30, groupId: 'E', teamAId: 20, teamBId: 17, matchNumber: 6, date: '25 Jun', time: '20:00' },
+
+  // ── Group F ──────────────────────────────────────────────
+  { id: 31, groupId: 'F', teamAId: 21, teamBId: 22, matchNumber: 1, date: '14 Jun', time: '20:00' },
+  { id: 32, groupId: 'F', teamAId: 23, teamBId: 24, matchNumber: 2, date: '15 Jun', time: '02:00' },
+  { id: 33, groupId: 'F', teamAId: 21, teamBId: 23, matchNumber: 3, date: '20 Jun', time: '17:00' },
+  { id: 34, groupId: 'F', teamAId: 24, teamBId: 22, matchNumber: 4, date: '21 Jun', time: '04:00' },
+  { id: 35, groupId: 'F', teamAId: 22, teamBId: 23, matchNumber: 5, date: '25 Jun', time: '23:00' },
+  { id: 36, groupId: 'F', teamAId: 24, teamBId: 21, matchNumber: 6, date: '25 Jun', time: '23:00' },
+
+  // ── Group G ──────────────────────────────────────────────
+  { id: 37, groupId: 'G', teamAId: 25, teamBId: 26, matchNumber: 1, date: '15 Jun', time: '19:00' },
+  { id: 38, groupId: 'G', teamAId: 27, teamBId: 28, matchNumber: 2, date: '16 Jun', time: '01:00' },
+  { id: 39, groupId: 'G', teamAId: 25, teamBId: 27, matchNumber: 3, date: '21 Jun', time: '19:00' },
+  { id: 40, groupId: 'G', teamAId: 28, teamBId: 26, matchNumber: 4, date: '22 Jun', time: '01:00' },
+  { id: 41, groupId: 'G', teamAId: 26, teamBId: 27, matchNumber: 5, date: '27 Jun', time: '03:00' },
+  { id: 42, groupId: 'G', teamAId: 28, teamBId: 25, matchNumber: 6, date: '27 Jun', time: '03:00' },
+
+  // ── Group H ──────────────────────────────────────────────
+  { id: 43, groupId: 'H', teamAId: 29, teamBId: 30, matchNumber: 1, date: '15 Jun', time: '16:00' },
+  { id: 44, groupId: 'H', teamAId: 31, teamBId: 32, matchNumber: 2, date: '15 Jun', time: '22:00' },
+  { id: 45, groupId: 'H', teamAId: 29, teamBId: 31, matchNumber: 3, date: '21 Jun', time: '16:00' },
+  { id: 46, groupId: 'H', teamAId: 32, teamBId: 30, matchNumber: 4, date: '21 Jun', time: '22:00' },
+  { id: 47, groupId: 'H', teamAId: 30, teamBId: 31, matchNumber: 5, date: '27 Jun', time: '00:00' },
+  { id: 48, groupId: 'H', teamAId: 32, teamBId: 29, matchNumber: 6, date: '27 Jun', time: '00:00' },
+
+  // ── Group I ──────────────────────────────────────────────
+  { id: 49, groupId: 'I', teamAId: 33, teamBId: 34, matchNumber: 1, date: '16 Jun', time: '19:00' },
+  { id: 50, groupId: 'I', teamAId: 35, teamBId: 36, matchNumber: 2, date: '16 Jun', time: '22:00' },
+  { id: 51, groupId: 'I', teamAId: 33, teamBId: 35, matchNumber: 3, date: '22 Jun', time: '21:00' },
+  { id: 52, groupId: 'I', teamAId: 36, teamBId: 34, matchNumber: 4, date: '23 Jun', time: '00:00' },
+  { id: 53, groupId: 'I', teamAId: 36, teamBId: 33, matchNumber: 5, date: '26 Jun', time: '19:00' },
+  { id: 54, groupId: 'I', teamAId: 34, teamBId: 35, matchNumber: 6, date: '26 Jun', time: '19:00' },
+
+  // ── Group J ──────────────────────────────────────────────
+  { id: 55, groupId: 'J', teamAId: 37, teamBId: 38, matchNumber: 1, date: '17 Jun', time: '01:00' },
+  { id: 56, groupId: 'J', teamAId: 39, teamBId: 40, matchNumber: 2, date: '17 Jun', time: '04:00' },
+  { id: 57, groupId: 'J', teamAId: 37, teamBId: 39, matchNumber: 3, date: '22 Jun', time: '17:00' },
+  { id: 58, groupId: 'J', teamAId: 40, teamBId: 38, matchNumber: 4, date: '23 Jun', time: '03:00' },
+  { id: 59, groupId: 'J', teamAId: 38, teamBId: 39, matchNumber: 5, date: '28 Jun', time: '02:00' },
+  { id: 60, groupId: 'J', teamAId: 40, teamBId: 37, matchNumber: 6, date: '28 Jun', time: '02:00' },
+
+  // ── Group K ──────────────────────────────────────────────
+  { id: 61, groupId: 'K', teamAId: 41, teamBId: 42, matchNumber: 1, date: '17 Jun', time: '17:00' },
+  { id: 62, groupId: 'K', teamAId: 43, teamBId: 44, matchNumber: 2, date: '18 Jun', time: '02:00' },
+  { id: 63, groupId: 'K', teamAId: 41, teamBId: 43, matchNumber: 3, date: '23 Jun', time: '17:00' },
+  { id: 64, groupId: 'K', teamAId: 44, teamBId: 42, matchNumber: 4, date: '24 Jun', time: '02:00' },
+  { id: 65, groupId: 'K', teamAId: 44, teamBId: 41, matchNumber: 5, date: '27 Jun', time: '23:30' },
+  { id: 66, groupId: 'K', teamAId: 42, teamBId: 43, matchNumber: 6, date: '27 Jun', time: '23:30' },
+
+  // ── Group L ──────────────────────────────────────────────
+  { id: 67, groupId: 'L', teamAId: 45, teamBId: 46, matchNumber: 1, date: '17 Jun', time: '20:00' },
+  { id: 68, groupId: 'L', teamAId: 47, teamBId: 48, matchNumber: 2, date: '17 Jun', time: '23:00' },
+  { id: 69, groupId: 'L', teamAId: 45, teamBId: 47, matchNumber: 3, date: '23 Jun', time: '20:00' },
+  { id: 70, groupId: 'L', teamAId: 48, teamBId: 46, matchNumber: 4, date: '23 Jun', time: '23:00' },
+  { id: 71, groupId: 'L', teamAId: 48, teamBId: 45, matchNumber: 5, date: '27 Jun', time: '21:00' },
+  { id: 72, groupId: 'L', teamAId: 46, teamBId: 47, matchNumber: 6, date: '27 Jun', time: '21:00' },
 ];
-
-// Madrid time (CEST / UTC+2) — from FIFA.com with country=ES
-const GROUP_SCHEDULE: Record<number, { date: string; time: string }> = {
-  // Group A
-  1:  { date: '11 Jun', time: '19:00' },
-  2:  { date: '12 Jun', time: '02:00' },
-  3:  { date: '19 Jun', time: '01:00' },
-  4:  { date: '18 Jun', time: '16:00' },
-  5:  { date: '25 Jun', time: '01:00' },
-  6:  { date: '25 Jun', time: '01:00' },
-  // Group B
-  7:  { date: '12 Jun', time: '19:00' },
-  8:  { date: '13 Jun', time: '19:00' },
-  9:  { date: '18 Jun', time: '22:00' },
-  10: { date: '18 Jun', time: '19:00' },
-  11: { date: '24 Jun', time: '19:00' },
-  12: { date: '24 Jun', time: '19:00' },
-  // Group C
-  13: { date: '13 Jun', time: '22:00' },
-  14: { date: '14 Jun', time: '01:00' },
-  15: { date: '20 Jun', time: '00:30' },
-  16: { date: '19 Jun', time: '22:00' },
-  17: { date: '24 Jun', time: '22:00' },
-  18: { date: '24 Jun', time: '22:00' },
-  // Group D
-  19: { date: '13 Jun', time: '01:00' },
-  20: { date: '14 Jun', time: '04:00' },
-  21: { date: '19 Jun', time: '19:00' },
-  22: { date: '20 Jun', time: '03:00' },
-  23: { date: '26 Jun', time: '02:00' },
-  24: { date: '26 Jun', time: '02:00' },
-  // Group E
-  25: { date: '14 Jun', time: '17:00' },
-  26: { date: '14 Jun', time: '23:00' },
-  27: { date: '20 Jun', time: '20:00' },
-  28: { date: '21 Jun', time: '00:00' },
-  29: { date: '25 Jun', time: '20:00' },
-  30: { date: '25 Jun', time: '20:00' },
-  // Group F
-  31: { date: '14 Jun', time: '20:00' },
-  32: { date: '15 Jun', time: '02:00' },
-  33: { date: '20 Jun', time: '17:00' },
-  34: { date: '21 Jun', time: '04:00' },
-  35: { date: '25 Jun', time: '23:00' },
-  36: { date: '25 Jun', time: '23:00' },
-  // Group G
-  37: { date: '15 Jun', time: '19:00' },
-  38: { date: '16 Jun', time: '01:00' },
-  39: { date: '21 Jun', time: '19:00' },
-  40: { date: '22 Jun', time: '01:00' },
-  41: { date: '27 Jun', time: '03:00' },
-  42: { date: '27 Jun', time: '03:00' },
-  // Group H
-  43: { date: '15 Jun', time: '16:00' },
-  44: { date: '15 Jun', time: '22:00' },
-  45: { date: '21 Jun', time: '16:00' },
-  46: { date: '21 Jun', time: '22:00' },
-  47: { date: '27 Jun', time: '00:00' },
-  48: { date: '27 Jun', time: '00:00' },
-  // Group I
-  49: { date: '16 Jun', time: '19:00' },
-  50: { date: '16 Jun', time: '22:00' },
-  51: { date: '22 Jun', time: '21:00' },
-  52: { date: '23 Jun', time: '00:00' },
-  53: { date: '26 Jun', time: '19:00' },
-  54: { date: '26 Jun', time: '19:00' },
-  // Group J
-  55: { date: '17 Jun', time: '01:00' },
-  56: { date: '17 Jun', time: '04:00' },
-  57: { date: '22 Jun', time: '17:00' },
-  58: { date: '23 Jun', time: '03:00' },
-  59: { date: '28 Jun', time: '02:00' },
-  60: { date: '28 Jun', time: '02:00' },
-  // Group K
-  61: { date: '17 Jun', time: '17:00' },
-  62: { date: '18 Jun', time: '02:00' },
-  63: { date: '23 Jun', time: '17:00' },
-  64: { date: '24 Jun', time: '02:00' },
-  65: { date: '27 Jun', time: '23:30' },
-  66: { date: '27 Jun', time: '23:30' },
-  // Group L
-  67: { date: '17 Jun', time: '20:00' },
-  68: { date: '17 Jun', time: '23:00' },
-  69: { date: '23 Jun', time: '20:00' },
-  70: { date: '23 Jun', time: '23:00' },
-  71: { date: '27 Jun', time: '21:00' },
-  72: { date: '27 Jun', time: '21:00' },
-};
-
-function generateGroupMatches(): GroupMatch[] {
-  const matches: GroupMatch[] = [];
-  let matchId = 1;
-
-  for (const groupId of GROUPS) {
-    const teams = getTeamsByGroup(groupId);
-
-    for (let i = 0; i < INTRA_GROUP_PAIRINGS.length; i++) {
-      const [a, b] = INTRA_GROUP_PAIRINGS[i];
-      const sched = GROUP_SCHEDULE[matchId];
-      matches.push({
-        id: matchId,
-        groupId,
-        teamAId: teams[a].id,
-        teamBId: teams[b].id,
-        matchNumber: i + 1,
-        date: sched?.date,
-        time: sched?.time,
-      });
-      matchId++;
-    }
-  }
-
-  return matches;
-}
-
-export const GROUP_MATCHES: GroupMatch[] = generateGroupMatches();
 
 export function getMatchesByGroup(groupId: string): GroupMatch[] {
   return GROUP_MATCHES.filter((m) => m.groupId === groupId);
