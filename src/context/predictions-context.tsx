@@ -137,7 +137,7 @@ function ScopedPredictionsProvider({
       return
     }
     let cancelled = false
-    loadPredictions(poolId).then((dbData) => {
+    loadPredictions().then((dbData) => {
       if (cancelled) return
       if (!dbData) {
         // User is not a member — clear any stale localStorage state so the UI
@@ -329,7 +329,6 @@ function ScopedPredictionsProvider({
     try {
       const submittedMatchups = knockoutMatchups ?? buildCurrentKnockoutMatchups()
       const result = await submitPredictionsToDb(
-        poolId,
         state.groupPredictions,
         state.knockoutPredictions,
         submittedMatchups,
@@ -359,7 +358,7 @@ function ScopedPredictionsProvider({
 
   const cancelEditingSubmission = useCallback(async (): Promise<string | null> => {
     if (!poolId) return 'No active pool'
-    const dbData = await loadPredictions(poolId)
+    const dbData = await loadPredictions()
     if (!dbData) return 'Failed to reload saved predictions'
 
     setState({

@@ -63,6 +63,29 @@ function isMissingKnockoutMatchupColumn(error: { message?: string } | null | und
   return isMissingColumn(error, 'team_a_id') || isMissingColumn(error, 'team_b_id')
 }
 
+async function getCurrentUserPoolId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<{ userId: string; poolId: string } | { error: string }> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('country')
+    .eq('id', user.id)
+    .maybeSingle()
+  if (!profile?.country) return { error: 'Profile country is missing' }
+
+  const { data: pool } = await supabase
+    .from('pools')
+    .select('id')
+    .eq('slug', profile.country)
+    .maybeSingle()
+  if (!pool?.id) return { error: 'Office pool not found' }
+
+  return { userId: user.id, poolId: pool.id as string }
+}
+
 async function ensureMembership(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
@@ -126,41 +149,39 @@ async function ensureOrJoinMembership(
   return { ok: true }
 }
 
-export async function loadPredictions(poolId: string): Promise<LoadResult | null> {
-  if (!poolId) return null
+export async function loadPredictions(): Promise<LoadResult | null> {
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return null
+  const result = await getCurrentUserPoolId(supabase)
+  if ('error' in result) return null
+  const { userId, poolId } = result
 
-  const isMember = await ensureMembership(supabase, user.id, poolId)
+  const isMember = await ensureMembership(supabase, userId, poolId)
   if (!isMember) return null
 
   const groupRes = await supabase
     .from('group_predictions')
     .select('match_id, predicted_score_a, predicted_score_b')
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .eq('pool_id', poolId)
 
   let knockoutRes: PredictionReadResponse<KnockoutPredictionRow> = await supabase
     .from('knockout_predictions')
     .select('match_id, predicted_winner_id, team_a_id, team_b_id')
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .eq('pool_id', poolId)
 
   if (isMissingKnockoutMatchupColumn(knockoutRes.error)) {
     knockoutRes = await supabase
       .from('knockout_predictions')
       .select('match_id, predicted_winner_id')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .eq('pool_id', poolId)
   }
 
   const submissionRes = await supabase
     .from('submissions')
     .select('user_id')
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .eq('pool_id', poolId)
     .maybeSingle()
 
@@ -194,22 +215,19 @@ export async function loadPredictions(poolId: string): Promise<LoadResult | null
 }
 
 export async function savePredictionDraft(
-  poolId: string,
   groupPredictions: Record<number, { scoreA?: number; scoreB?: number }>,
   knockoutPredictions: Record<string, number>,
 ): Promise<SubmitResult> {
-  if (!poolId) return { success: false, error: 'Missing pool' }
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Not authenticated' }
+  const result = await getCurrentUserPoolId(supabase)
+  if ('error' in result) return { success: false, error: result.error }
+  const { userId, poolId } = result
 
   if (isTournamentLocked()) {
     return { success: false, error: LOCKED_ERROR }
   }
 
-  const isMember = await ensureMembership(supabase, user.id, poolId)
+  const isMember = await ensureMembership(supabase, userId, poolId)
   if (!isMember) return { success: false, error: 'You are not a member of this pool' }
 
   const now = new Date().toISOString()
@@ -221,7 +239,7 @@ export async function savePredictionDraft(
     )
     .map(([matchId, value]) => ({
       pool_id: poolId,
-      user_id: user.id,
+      user_id: userId,
       match_id: Number(matchId),
       predicted_score_a: value.scoreA as number,
       predicted_score_b: value.scoreB as number,
@@ -238,7 +256,7 @@ export async function savePredictionDraft(
   const knockoutRows = Object.entries(knockoutPredictions).map(
     ([matchId, winnerId]) => ({
       pool_id: poolId,
-      user_id: user.id,
+      user_id: userId,
       match_id: matchId,
       predicted_winner_id: winnerId,
       updated_at: now,
@@ -256,17 +274,14 @@ export async function savePredictionDraft(
 }
 
 export async function submitPredictionsToDb(
-  poolId: string,
   groupPredictions: Record<number, { scoreA?: number; scoreB?: number }>,
   knockoutPredictions: Record<string, number>,
   knockoutMatchups: Record<string, KnockoutMatchup> = {},
 ): Promise<SubmitResult> {
-  if (!poolId) return { success: false, error: 'Missing pool' }
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Not authenticated' }
+  const result = await getCurrentUserPoolId(supabase)
+  if ('error' in result) return { success: false, error: result.error }
+  const { userId, poolId } = result
 
   if (isTournamentLocked()) {
     return { success: false, error: LOCKED_ERROR }
@@ -280,6 +295,8 @@ export async function submitPredictionsToDb(
     return { success: false, error: validation.error }
   }
 
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Not authenticated' }
   const membership = await ensureOrJoinMembership(supabase, user, poolId)
   if (!membership.ok) return { success: false, error: membership.error }
 
@@ -297,7 +314,7 @@ export async function submitPredictionsToDb(
 
   const groupUpsertData = groupRows.map((r) => ({
     pool_id: poolId,
-    user_id: user.id,
+    user_id: userId,
     match_id: r.matchId,
     predicted_score_a: r.scoreA,
     predicted_score_b: r.scoreB,
@@ -314,7 +331,7 @@ export async function submitPredictionsToDb(
 
   const knockoutUpsertData = knockoutRows.map((r) => ({
     pool_id: poolId,
-    user_id: user.id,
+    user_id: userId,
     match_id: r.matchId,
     team_a_id: knockoutMatchups[r.matchId]?.teamAId ?? null,
     team_b_id: knockoutMatchups[r.matchId]?.teamBId ?? null,
@@ -329,7 +346,7 @@ export async function submitPredictionsToDb(
   if (isMissingKnockoutMatchupColumn(knockoutError)) {
     const fallbackKnockoutUpsertData = knockoutRows.map((r) => ({
       pool_id: poolId,
-      user_id: user.id,
+      user_id: userId,
       match_id: r.matchId,
       predicted_winner_id: r.winnerId,
       updated_at: now,
@@ -348,7 +365,7 @@ export async function submitPredictionsToDb(
   const existingSubmission = await supabase
     .from('submissions')
     .select('user_id')
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .eq('pool_id', poolId)
     .maybeSingle()
 
@@ -360,7 +377,7 @@ export async function submitPredictionsToDb(
     .from('submissions')
     .insert({
       pool_id: poolId,
-      user_id: user.id,
+      user_id: userId,
       submitted_at: now,
       is_locked: true,
     })

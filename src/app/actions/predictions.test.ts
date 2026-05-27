@@ -60,6 +60,11 @@ function expectMembershipScopedToUserAndPool(client: SupabaseMock): void {
   )
 }
 
+function queuePoolResolution(client: SupabaseMock): void {
+  client.queueResult({ data: { country: 'spain' }, error: null })
+  client.queueResult({ data: { id: 'pool-1' }, error: null })
+}
+
 describe('prediction action guardrails', () => {
   beforeEach(() => {
     createClientMock.mockReset()
@@ -72,16 +77,16 @@ describe('prediction action guardrails', () => {
   })
 
   it('returns null for anonymous loadPredictions calls', async () => {
-    const client = useUserClient(null)
+    useUserClient(null)
 
-    await expect(loadPredictions('pool-1')).resolves.toBeNull()
+    await expect(loadPredictions()).resolves.toBeNull()
 
     expect(createClientMock).toHaveBeenCalledOnce()
-    expect(client.client.from).not.toHaveBeenCalled()
   })
 
   it('loads saved knockout matchup snapshots with predictions', async () => {
     const client = useUserClient({ id: 'user-1' })
+    queuePoolResolution(client)
     client.queueResult({ data: { pool_id: 'pool-1' }, error: null })
     client.queueResult({
       data: [{ match_id: 1, predicted_score_a: 2, predicted_score_b: 1 }],
@@ -93,7 +98,7 @@ describe('prediction action guardrails', () => {
     })
     client.queueResult({ data: { user_id: 'user-1' }, error: null })
 
-    await expect(loadPredictions('pool-1')).resolves.toEqual({
+    await expect(loadPredictions()).resolves.toEqual({
       groupPredictions: { 1: { scoreA: 2, scoreB: 1 } },
       knockoutPredictions: { 'R32-1': 1 },
       knockoutMatchups: { 'R32-1': { teamAId: 1, teamBId: 2 } },
@@ -104,10 +109,11 @@ describe('prediction action guardrails', () => {
 
   it('blocks non-members from saving prediction drafts', async () => {
     const client = useUserClient({ id: 'user-1' })
+    queuePoolResolution(client)
     client.queueResult({ data: null, error: null })
 
     await expect(
-      savePredictionDraft('pool-1', completeGroupPredictions(1), knockoutPredictions(1)),
+      savePredictionDraft(completeGroupPredictions(1), knockoutPredictions(1)),
     ).resolves.toEqual({
       success: false,
       error: 'You are not a member of this pool',
@@ -119,12 +125,13 @@ describe('prediction action guardrails', () => {
 
   it('allows prediction draft edits after submission before first kickoff', async () => {
     const client = useUserClient({ id: 'user-1' })
+    queuePoolResolution(client)
     client.queueResult({ data: { pool_id: 'pool-1' }, error: null })
     client.queueResult({ error: null })
     client.queueResult({ error: null })
 
     await expect(
-      savePredictionDraft('pool-1', completeGroupPredictions(1), knockoutPredictions(1)),
+      savePredictionDraft(completeGroupPredictions(1), knockoutPredictions(1)),
     ).resolves.toEqual({ success: true })
 
     expectMembershipScopedToUserAndPool(client)
@@ -139,39 +146,37 @@ describe('prediction action guardrails', () => {
   it('blocks prediction draft edits after first kickoff', async () => {
     vi.setSystemTime(new Date('2026-06-11T19:00:00.000Z'))
     const client = useUserClient({ id: 'user-1' })
-    client.queueResult({ data: { pool_id: 'pool-1' }, error: null })
+    queuePoolResolution(client)
 
     await expect(
-      savePredictionDraft('pool-1', completeGroupPredictions(1), knockoutPredictions(1)),
+      savePredictionDraft(completeGroupPredictions(1), knockoutPredictions(1)),
     ).resolves.toEqual({
       success: false,
       error: 'Predictions are locked because the tournament has started',
     })
 
-    expect(client.client.from).not.toHaveBeenCalled()
     expectNoUpserts(client)
   })
 
   it('blocks anonymous final submissions before database queries', async () => {
-    const client = useUserClient(null)
+    useUserClient(null)
 
     await expect(
-      submitPredictionsToDb('pool-1', completeGroupPredictions(72), knockoutPredictions(32)),
+      submitPredictionsToDb(completeGroupPredictions(72), knockoutPredictions(32)),
     ).resolves.toEqual({
       success: false,
       error: 'Not authenticated',
     })
-
-    expect(client.client.from).not.toHaveBeenCalled()
   })
 
   it('blocks final submissions when auto-join finds a missing or inactive pool', async () => {
     const client = useUserClient({ id: 'user-1' })
+    queuePoolResolution(client)
     client.queueResult({ data: null, error: null })
     client.queueResult({ data: null, error: null })
 
     await expect(
-      submitPredictionsToDb('pool-1', completeGroupPredictions(72), knockoutPredictions(32)),
+      submitPredictionsToDb(completeGroupPredictions(72), knockoutPredictions(32)),
     ).resolves.toEqual({
       success: false,
       error: 'Pool not found or inactive',
@@ -184,29 +189,29 @@ describe('prediction action guardrails', () => {
   it('blocks final submissions after first kickoff before database queries', async () => {
     vi.setSystemTime(new Date('2026-06-11T19:00:00.000Z'))
     const client = useUserClient({ id: 'user-1' })
+    queuePoolResolution(client)
 
     await expect(
-      submitPredictionsToDb('pool-1', completeGroupPredictions(72), knockoutPredictions(32)),
+      submitPredictionsToDb(completeGroupPredictions(72), knockoutPredictions(32)),
     ).resolves.toEqual({
       success: false,
       error: 'Predictions are locked because the tournament has started',
     })
 
-    expect(client.client.from).not.toHaveBeenCalled()
     expectNoUpserts(client)
   })
 
   it('rejects incomplete final submissions before membership side effects', async () => {
     const client = useUserClient({ id: 'user-1' })
+    queuePoolResolution(client)
 
     await expect(
-      submitPredictionsToDb('pool-1', completeGroupPredictions(71), knockoutPredictions(32)),
+      submitPredictionsToDb(completeGroupPredictions(71), knockoutPredictions(32)),
     ).resolves.toEqual({
       success: false,
       error: 'Expected 72 complete group predictions, got 71',
     })
 
-    expect(client.client.from).not.toHaveBeenCalled()
     expectNoUpserts(client)
     expect(client.calls).not.toEqual(
       expect.arrayContaining([
@@ -218,11 +223,12 @@ describe('prediction action guardrails', () => {
 
   it('propagates group prediction write errors during final submission', async () => {
     const client = useUserClient({ id: 'user-1' })
+    queuePoolResolution(client)
     client.queueResult({ data: { pool_id: 'pool-1' }, error: null })
     client.queueResult({ error: { message: 'Group write failed' } })
 
     await expect(
-      submitPredictionsToDb('pool-1', completeGroupPredictions(72), knockoutPredictions(32)),
+      submitPredictionsToDb(completeGroupPredictions(72), knockoutPredictions(32)),
     ).resolves.toEqual({
       success: false,
       error: 'Failed to save group predictions: Group write failed',
@@ -239,6 +245,7 @@ describe('prediction action guardrails', () => {
 
   it('writes predictions and records complete final submissions', async () => {
     const client = useUserClient({ id: 'user-1' })
+    queuePoolResolution(client)
     client.queueResult({ data: { pool_id: 'pool-1' }, error: null })
     client.queueResult({ error: null })
     client.queueResult({ error: null })
@@ -247,7 +254,6 @@ describe('prediction action guardrails', () => {
 
     await expect(
       submitPredictionsToDb(
-        'pool-1',
         completeGroupPredictions(72),
         knockoutPredictions(32),
         knockoutMatchups(32),
@@ -342,6 +348,7 @@ describe('prediction action guardrails', () => {
       email: 'jorge@example.com',
       user_metadata: { display_name: 'Jorge' },
     })
+    queuePoolResolution(client)
     client.queueResult({ data: null, error: null })
     client.queueResult({ data: { id: 'pool-1', is_active: true }, error: null })
     client.queueResult({
@@ -359,7 +366,6 @@ describe('prediction action guardrails', () => {
 
     await expect(
       submitPredictionsToDb(
-        'pool-1',
         completeGroupPredictions(72),
         knockoutPredictions(32),
         knockoutMatchups(32),
@@ -387,6 +393,7 @@ describe('prediction action guardrails', () => {
 
   it('submits without matchup storage when the database columns are not migrated yet', async () => {
     const client = useUserClient({ id: 'user-1' })
+    queuePoolResolution(client)
     client.queueResult({ data: { pool_id: 'pool-1' }, error: null })
     client.queueResult({ error: null })
     client.queueResult({
@@ -400,7 +407,6 @@ describe('prediction action guardrails', () => {
 
     await expect(
       submitPredictionsToDb(
-        'pool-1',
         completeGroupPredictions(72),
         knockoutPredictions(32),
         knockoutMatchups(32),
@@ -423,6 +429,7 @@ describe('prediction action guardrails', () => {
 
   it('updates prediction rows on existing submissions', async () => {
     const client = useUserClient({ id: 'user-1' })
+    queuePoolResolution(client)
     client.queueResult({ data: { pool_id: 'pool-1' }, error: null })
     client.queueResult({ error: null })
     client.queueResult({ error: null })
@@ -430,7 +437,6 @@ describe('prediction action guardrails', () => {
 
     await expect(
       submitPredictionsToDb(
-        'pool-1',
         completeGroupPredictions(72),
         knockoutPredictions(32),
         knockoutMatchups(32),
