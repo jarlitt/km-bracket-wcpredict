@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { PoolFlag } from '@/components/pools/pool-flag'
 
 interface OfficeCount {
@@ -23,14 +24,15 @@ export function ParticipationBanner({
 
       <div className="flex flex-wrap gap-2">
         {officeCounts.map((office) => (
-          <span
+          <Link
             key={office.slug}
-            className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/20 bg-indigo-900/40 px-3 py-1 text-xs text-indigo-100"
+            href={`/pools/${office.slug}`}
+            className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/20 bg-indigo-900/40 px-3 py-1 text-xs text-indigo-100 transition-colors hover:border-indigo-400/40 hover:bg-indigo-800/50"
           >
             <PoolFlag slug={office.slug} size={16} />
             <span>{office.name.replace(/ Office$/, '')}</span>
             <span className="font-bold tabular-nums">{office.count}</span>
-          </span>
+          </Link>
         ))}
       </div>
     </section>

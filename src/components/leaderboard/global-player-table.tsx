@@ -11,11 +11,13 @@ export function GlobalPlayerTable({
   countries,
   locked,
   currentUserId,
+  pendingOnly,
 }: {
   players: GlobalPlayer[]
   countries: Array<{ slug: string; name: string }>
   locked: boolean
   currentUserId?: string
+  pendingOnly?: boolean
 }) {
   const [country, setCountry] = useState('all')
   const filtered = useMemo(
@@ -31,7 +33,7 @@ export function GlobalPlayerTable({
           onClick={() => setCountry('all')}
           className={`rounded-full border px-3 py-1 text-sm transition-colors ${country === 'all' ? 'border-primary bg-primary/10 text-foreground' : 'border-border/50 text-muted-foreground hover:bg-muted/50'}`}
         >
-          All countries
+          All offices
         </button>
         {countries.map((c) => (
           <button
@@ -49,8 +51,8 @@ export function GlobalPlayerTable({
         {filtered.length === 0 ? (
           <p className="px-4 py-8 text-center text-sm text-muted-foreground">No members yet.</p>
         ) : (
-          filtered.map((player) => (
-            <PlayerRow key={player.userId} player={player} locked={locked} isOwn={player.userId === currentUserId} />
+          filtered.map((player, i) => (
+            <PlayerRow key={player.userId} player={player} rank={i + 1} locked={locked} isOwn={player.userId === currentUserId} pendingOnly={pendingOnly} />
           ))
         )}
       </div>
@@ -58,11 +60,13 @@ export function GlobalPlayerTable({
   )
 }
 
-function PlayerRow({ player, locked, isOwn }: { player: GlobalPlayer; locked: boolean; isOwn: boolean }) {
+function PlayerRow({ player, rank, locked, isOwn, pendingOnly }: { player: GlobalPlayer; rank: number; locked: boolean; isOwn: boolean; pendingOnly?: boolean }) {
   const statusBadge = player.submitted ? (
-    <span className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-      Submitted
-    </span>
+    pendingOnly ? null : (
+      <span className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+        Submitted
+      </span>
+    )
   ) : (
     <span className="shrink-0 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
       Not submitted
@@ -71,7 +75,7 @@ function PlayerRow({ player, locked, isOwn }: { player: GlobalPlayer; locked: bo
 
   const content = (
     <>
-      <span className="w-8 text-sm font-bold text-muted-foreground">#{player.rank}</span>
+      <span className="w-8 text-sm font-bold text-muted-foreground">#{rank}</span>
       <PoolFlag slug={player.country} size={24} />
       <span className="flex-1 text-sm font-medium">{player.displayName}</span>
       {statusBadge}

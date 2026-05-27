@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { TeamFlag } from '@/components/team-flag'
 import { getTeamById } from '@/lib/data/teams'
@@ -12,8 +13,11 @@ function MatchCard({ match }: { match: GroupMatch }) {
   const teamB = getTeamById(match.teamBId)
 
   return (
-    <Card className="border-border/40 bg-card/30 py-0">
-      <CardContent className="p-3">
+    <Card className="relative border-border/40 bg-card/30 py-0">
+      <span className="absolute left-2 top-1.5 rounded-full border border-border/30 bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+        Group {match.groupId}
+      </span>
+      <CardContent className="p-3 pt-6">
         <div className="flex items-center gap-3">
           {kickoff && (
             <div className="flex w-16 shrink-0 flex-col items-center gap-1 text-xs">
@@ -60,9 +64,17 @@ export function UpcomingMatches({
 
   return (
     <section className="space-y-4">
-      <h2 className="text-lg font-semibold">
-        {locked ? "Today's Matches" : 'Next Matches'}
-      </h2>
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-lg font-semibold">
+          {locked ? "Today's Matches" : 'Next Matches'}
+        </h2>
+        <Link
+          href="/matches"
+          className="text-sm text-muted-foreground hover:text-foreground"
+        >
+          View all matches →
+        </Link>
+      </div>
       <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
         {matches.map((m) => (
           <MatchCard key={m.id} match={m} />

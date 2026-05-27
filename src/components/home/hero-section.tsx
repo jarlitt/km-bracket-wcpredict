@@ -75,7 +75,7 @@ export function HeroSection({ lockAt, locked }: HeroSectionProps) {
       {!locked && <div className="mt-6"><CountdownTimer lockAt={lockAt} /></div>}
 
       {locked && (
-        <div className="mt-8 flex gap-4">
+        <div className="mt-8 flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:gap-4">
           <Link
             href="/matches"
             className={buttonVariants({ size: 'lg', className: 'px-8 text-base' })}
@@ -126,7 +126,7 @@ function HeroCtas({
 }) {
   if (authLoading || !dbLoaded) {
     return (
-      <div className="mt-8 flex gap-4">
+      <div className="mt-8 flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:gap-4">
         <Link href="/predict/groups" className={buttonVariants({ size: 'lg', className: 'px-8 text-base' })}>
           Start Predicting
         </Link>
@@ -139,7 +139,7 @@ function HeroCtas({
 
   if (user && submitted) {
     return (
-      <div className="mt-8 flex gap-4">
+      <div className="mt-8 flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:gap-4">
         <Link href="/predict/groups" className={buttonVariants({ size: 'lg', className: 'px-8 text-base' })}>
           Edit Predictions
         </Link>
@@ -170,7 +170,7 @@ function HeroCtas({
   }
 
   return (
-    <div className="mt-8 flex gap-4">
+    <div className="mt-8 flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:gap-4">
       <Link href="/predict/groups" className={buttonVariants({ size: 'lg', className: 'px-8 text-base' })}>
         Start Predicting
       </Link>

@@ -327,8 +327,9 @@ function ScopedPredictionsProvider({
   }, [])
 
   const autofillDemo = useCallback(() => {
+    const salt = Date.now()
     const seededRandom = (seed: number) => {
-      const x = Math.sin(seed) * 10000
+      const x = Math.sin(seed + salt) * 10000
       return x - Math.floor(x)
     }
 

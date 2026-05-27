@@ -28,18 +28,13 @@ export function Navbar() {
 
   const isAdmin = ADMIN_EMAILS.includes(user?.email ?? '') && !submitted
 
-  const navLinks = user
-    ? [
-        { href: '/', label: 'Home' },
-        { href: '/predict/groups', label: 'Predict' },
-        { href: '/leaderboard', label: 'Leaderboard' },
-        { href: `/pools/${user.country}`, label: 'My Office' },
-        { href: '/rules', label: 'Rules' },
-      ]
-    : [
-        { href: '/', label: 'Home' },
-        { href: '/rules', label: 'Rules' },
-      ]
+  const navLinks = [
+    { href: '/', label: 'Home' },
+    { href: '/predict/groups', label: 'Predict' },
+    { href: '/leaderboard', label: 'Leaderboard' },
+    ...(user ? [{ href: `/pools/${user.country}`, label: 'My Office' }] : []),
+    { href: '/rules', label: 'Rules' },
+  ]
 
   useEffect(() => {
     if (!mobileOpen) return

@@ -52,7 +52,13 @@ export default async function HomePage() {
 
   const totalSubmitted = officeCounts.reduce((sum, o) => sum + o.count, 0)
 
-  const upcomingMatches = GROUP_MATCHES.slice(0, 4)
+  const upcomingMatches = [...GROUP_MATCHES]
+    .sort((a, b) => {
+      const da = new Date(`${a.date} 2026 ${a.time ?? '00:00'} UTC`)
+      const db = new Date(`${b.date} 2026 ${b.time ?? '00:00'} UTC`)
+      return da.getTime() - db.getTime()
+    })
+    .slice(0, 4)
 
   return (
     <div className="gradient-bg min-h-screen">
@@ -64,14 +70,8 @@ export default async function HomePage() {
         />
         <PreviewCards />
         <section className="space-y-4">
-          <h2 className="text-lg font-semibold">Leaderboard</h2>
-          <GlobalPlayerTable
-            players={globalPlayers}
-            countries={countryStandings.map(({ slug, name }) => ({ slug, name }))}
-            locked={locked}
-            currentUserId={user?.id}
-          />
-          <div className="text-center">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-lg font-semibold">Leaderboard</h2>
             <Link
               href="/leaderboard"
               className="text-sm text-muted-foreground hover:text-foreground"
@@ -79,6 +79,13 @@ export default async function HomePage() {
               View full leaderboard →
             </Link>
           </div>
+          <GlobalPlayerTable
+            players={globalPlayers}
+            countries={countryStandings.map(({ slug, name }) => ({ slug, name }))}
+            locked={locked}
+            currentUserId={user?.id}
+            pendingOnly
+          />
         </section>
         <UpcomingMatches matches={upcomingMatches} locked={locked} />
         <ClosingCta locked={locked} />

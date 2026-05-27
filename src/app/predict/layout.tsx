@@ -65,6 +65,7 @@ export default function PredictLayout({
     string | null
   >(null)
   const [discardingNavigation, setDiscardingNavigation] = useState(false)
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false)
   const attemptedAuthSubmitRef = useRef(false)
   const currentHrefRef = useRef<string | null>(null)
   const groupProgress = Math.round(
@@ -138,10 +139,15 @@ export default function PredictLayout({
     router.push(summaryHref)
   }, [totalGroupPredictions, totalKnockoutPredictions, user, submitPredictions, router, summaryHref])
 
-  const handleCancelEditing = async () => {
+  const handleCancelEditing = () => {
+    setConfirmCancelOpen(true)
+  }
+
+  const handleConfirmCancelEditing = async () => {
     setCancelling(true)
     const error = await cancelEditingSubmission()
     setCancelling(false)
+    setConfirmCancelOpen(false)
 
     if (error) {
       toast.error(error)
@@ -476,6 +482,40 @@ export default function PredictLayout({
               disabled={discardingNavigation}
             >
               {discardingNavigation ? 'Discarding...' : 'Discard and leave'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={confirmCancelOpen}
+        onOpenChange={(open) => {
+          if (!open && !cancelling) {
+            setConfirmCancelOpen(false)
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Discard edits?</DialogTitle>
+            <DialogDescription>
+              Your changes will be discarded and your saved submission will stay
+              as it was.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmCancelOpen(false)}
+              disabled={cancelling}
+            >
+              Keep editing
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => void handleConfirmCancelEditing()}
+              disabled={cancelling}
+            >
+              {cancelling ? 'Discarding...' : 'Discard edits'}
             </Button>
           </DialogFooter>
         </DialogContent>

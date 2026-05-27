@@ -198,6 +198,7 @@ export default function GroupsPage() {
     submitted,
     predictionsLocked,
     editingSubmission,
+    autofillDemo,
     autofillGroupDemo,
     setTieBreakResolution,
   } = usePredictions()
@@ -218,13 +219,21 @@ export default function GroupsPage() {
         <p className="text-sm text-muted-foreground mt-1">
           Predict the score for each of the 72 group matches
         </p>
-        {allComplete && (
-          <div className="mt-3">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {allComplete && (
             <Link href="/predict/thirds">
               <Button size="sm">Next: Best 3rds</Button>
             </Link>
-          </div>
-        )}
+          )}
+          {!predictionsLocked && !readOnlySubmitted && (
+            <button
+              onClick={() => autofillDemo()}
+              className="text-xs font-medium text-pink-400 hover:text-pink-300 transition-colors flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-pink-500/20 hover:border-pink-500/40 hover:bg-pink-500/5"
+            >
+              <span className="dice-shake">🎲</span> Auto predict all groups
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Sticky group selector (+ mini standings on mobile only) */}
@@ -278,7 +287,7 @@ export default function GroupsPage() {
                 onClick={() => autofillGroupDemo(selectedGroup)}
                 className="text-xs font-medium text-pink-400 hover:text-pink-300 transition-colors flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-pink-500/20 hover:border-pink-500/40 hover:bg-pink-500/5"
               >
-                <span className="dice-shake">🎲</span> Auto predict
+                <span className="dice-shake">🎲</span> Auto predict group {selectedGroup}
               </button>
             )}
           </div>
