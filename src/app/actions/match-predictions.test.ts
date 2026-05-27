@@ -1,12 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createSupabaseActionMock, type SupabaseMock } from '@/test/supabase-action-mock'
 
-const { createClientMock } = vi.hoisted(() => ({
+const { createClientMock, isTournamentLockedAsyncMock } = vi.hoisted(() => ({
   createClientMock: vi.fn(),
+  isTournamentLockedAsyncMock: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: createClientMock,
+}))
+
+vi.mock('@/lib/matches/lock-server', () => ({
+  isTournamentLockedAsync: isTournamentLockedAsyncMock,
 }))
 
 import { getMatchPredictions } from './match-predictions'
@@ -50,6 +55,7 @@ function expectMemberListScopedToPool(client: SupabaseMock): void {
 describe('match prediction access guardrails', () => {
   beforeEach(() => {
     createClientMock.mockReset()
+    isTournamentLockedAsyncMock.mockResolvedValue(false)
   })
 
   it('returns null for missing pools before creating a Supabase client', async () => {

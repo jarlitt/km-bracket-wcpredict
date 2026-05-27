@@ -81,11 +81,11 @@ export default function PredictLayout({
   const summaryHref = predictSummaryHref()
 
   const isStepCompleted = (suffix: string): boolean => {
-    if (submitted) return true
+    if (submitted && !editingSubmission) return true
     if (suffix === '/predict/groups') return groupsDone
     if (suffix === '/predict/thirds') return groupsDone
     if (suffix === '/predict/bracket') return bracketDone
-    if (suffix === '/predict/summary') return submitted
+    if (suffix === '/predict/summary') return submitted && !editingSubmission
     return false
   }
 
@@ -291,7 +291,7 @@ export default function PredictLayout({
 
   return (
     <div>
-      <div className="border-b border-border/30 bg-card/10">
+      <div id="predict-stepper" className="sticky top-14 z-40 border-b border-border/30 bg-background/95 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 py-2.5 space-y-2">
           <div className="flex items-center gap-1 sm:gap-2">
             {steps.map((step, i) => {

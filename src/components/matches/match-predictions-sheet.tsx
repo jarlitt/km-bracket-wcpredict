@@ -14,12 +14,15 @@ import { Check, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/auth-context'
 import { usePools } from '@/context/pool-context'
+import { isTournamentLocked } from '@/lib/matches/lock'
 import {
   getMatchPredictions,
   type MatchPredictionsPayload,
 } from '@/app/actions/match-predictions'
 import type { LiveMatch } from '@/lib/espn/matches'
+import type { Pool } from '@/types'
 import { TeamFlag } from '@/components/team-flag'
+import { PoolFlag } from '@/components/pools/pool-flag'
 
 interface Props {
   open: boolean
@@ -29,9 +32,21 @@ interface Props {
 
 export function MatchPredictionsSheet({ open, onOpenChange, match }: Props) {
   const { user } = useAuth()
-  const { userPool } = usePools()
+  const { userPool, availablePools } = usePools()
+  const locked = isTournamentLocked()
 
-  const selectedPool = userPool
+  const [selectedPoolId, setSelectedPoolId] = useState<string | null>(null)
+
+  const selectedPool: Pool | null =
+    (locked && selectedPoolId
+      ? availablePools.find((p) => p.id === selectedPoolId) ?? null
+      : null) ?? userPool
+
+  useEffect(() => {
+    if (open && userPool && !selectedPoolId) {
+      setSelectedPoolId(userPool.id)
+    }
+  }, [open, userPool, selectedPoolId])
 
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState<MatchPredictionsPayload>(null)
@@ -88,29 +103,70 @@ export function MatchPredictionsSheet({ open, onOpenChange, match }: Props) {
         </SheetHeader>
 
         <SheetBody>
+          {locked && availablePools.length > 1 && (
+            <div className="mb-4 flex flex-wrap gap-1.5">
+              {availablePools.map((pool) => (
+                <button
+                  key={pool.id}
+                  type="button"
+                  onClick={() => setSelectedPoolId(pool.id)}
+                  className={cn(
+                    'flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+                    selectedPool?.id === pool.id
+                      ? 'border-primary/40 bg-primary/10 text-foreground'
+                      : 'border-border/40 text-muted-foreground hover:border-border hover:text-foreground',
+                  )}
+                >
+                  <PoolFlag slug={pool.slug} size={14} />
+                  {pool.name.replace(' Office', '')}
+                </button>
+              ))}
+            </div>
+          )}
+
           {!match.internalId ? (
             <EmptyState>This match isn&apos;t tracked yet.</EmptyState>
           ) : !user ? (
             <EmptyState>
-              Sign in to see how the rest of your pool is predicting this
-              match.
+              Sign in to see predictions after the tournament starts.
             </EmptyState>
           ) : !selectedPool ? (
-            <EmptyState>Join a pool to see other members&apos; predictions.</EmptyState>
+            <EmptyState>Join a pool to see predictions.</EmptyState>
           ) : loading ? (
             <EmptyState>Loading predictions...</EmptyState>
           ) : error ? (
             <EmptyState className="text-red-400">{error}</EmptyState>
-          ) : !data ? (
-            <EmptyState>No predictions found.</EmptyState>
-          ) : data.predictions.length === 0 ? (
-            <EmptyState>No one in {selectedPool.name} has predicted this match yet.</EmptyState>
-          ) : data.type === 'group' ? (
-            <GroupPredictionsList data={data} currentUserId={user?.id} />
+          ) : !data || data.predictions.length === 0 ? (
+            <EmptyState>
+              {locked
+                ? `No one in ${selectedPool.name} has predicted this match yet.`
+                : "You\u2019ll see others\u2019 predictions once the tournament starts."}
+            </EmptyState>
           ) : (
-            <KnockoutPredictionsList data={data} currentUserId={user?.id} />
+            <>
+              {data.type === 'group' ? (
+                <GroupPredictionsList data={data} currentUserId={user?.id} />
+              ) : (
+                <KnockoutPredictionsList data={data} currentUserId={user?.id} />
+              )}
+              {!locked && (
+                <p className="mt-4 text-center text-xs text-muted-foreground">
+                  You&apos;ll see others&apos; predictions once the tournament starts.
+                </p>
+              )}
+            </>
           )}
         </SheetBody>
+
+        {data && data.predictions.length > 0 && (
+          <ScoringFooter
+            rules={
+              data.type === 'group'
+                ? ['Correct outcome (W/D/L): +3 pts', 'Exact scoreline: +2 pts bonus']
+                : [`Correct winner: +${data.pointsPerWin} pts`]
+            }
+          />
+        )}
       </SheetContent>
     </Sheet>
   )
@@ -204,12 +260,6 @@ function GroupPredictionsList({
         ))}
       </div>
 
-      <ScoringFooter
-        rules={[
-          'Correct outcome (W/D/L): +3 pts',
-          'Exact scoreline: +2 pts bonus',
-        ]}
-      />
     </div>
   )
 }
@@ -284,7 +334,6 @@ function KnockoutPredictionsList({
         ))}
       </div>
 
-      <ScoringFooter rules={[`Correct winner: +${data.pointsPerWin} pts`]} />
     </div>
   )
 }
@@ -300,11 +349,11 @@ function DoubleCheck() {
 
 function ScoringFooter({ rules }: { rules: string[] }) {
   return (
-    <div className="border-t border-border/40 pt-4 text-xs text-muted-foreground">
-      <p className="mb-2 font-medium">Scoring</p>
-      <ul className="space-y-1">
+    <div className="sticky bottom-0 border-t border-border/40 bg-background px-6 py-3 text-xs text-muted-foreground">
+      <p className="mb-1 font-medium">Scoring</p>
+      <ul className="space-y-0.5">
         {rules.map((r) => (
-          <li key={r}>• {r}</li>
+          <li key={r}>{r}</li>
         ))}
       </ul>
     </div>

@@ -1,11 +1,8 @@
 'use client'
 
-import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
-
-const DOMAINS = ['@gmail.com', '@kingmakers.com']
 
 interface EmailInputProps {
   value: string
@@ -14,15 +11,6 @@ interface EmailInputProps {
 }
 
 export function EmailInput({ value, onChange, error }: EmailInputProps) {
-  const [focused, setFocused] = useState(false)
-
-  const handleDomain = (domain: string) => {
-    const local = value.split('@')[0]
-    if (local) onChange(local + domain)
-  }
-
-  const showSuggestions = value.length > 0 && focused
-
   return (
     <div className="space-y-2">
       <Label htmlFor="email">Email</Label>
@@ -32,27 +20,9 @@ export function EmailInput({ value, onChange, error }: EmailInputProps) {
         placeholder="you@example.com"
         value={value}
         onChange={e => onChange(e.target.value)}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
         className={cn(error && 'ring-2 ring-destructive border-destructive')}
       />
       {error && <p className="text-xs text-destructive">{error}</p>}
-      {showSuggestions && (
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[11px] text-muted-foreground">Quick fill:</span>
-          {DOMAINS.map(domain => (
-            <button
-              key={domain}
-              type="button"
-              onMouseDown={e => e.preventDefault()}
-              onClick={() => handleDomain(domain)}
-              className="px-3 py-1.5 text-xs font-medium rounded-lg bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground transition-colors truncate max-w-full"
-            >
-              {value.split('@')[0]}{domain}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   )
 }

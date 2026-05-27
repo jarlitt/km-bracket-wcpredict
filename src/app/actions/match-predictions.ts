@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { GROUP_MATCHES } from '@/lib/data/matches'
 import { getTeamById } from '@/lib/data/teams'
+import { isTournamentLockedAsync } from '@/lib/matches/lock-server'
 
 const KNOCKOUT_POINTS: Record<string, number> = {
   R32: 2,
@@ -81,22 +82,25 @@ export async function getMatchPredictions(
   } = await supabase.auth.getUser()
   if (!user) return null
 
-  const membership = await supabase
-    .from('pool_members')
-    .select('pool_id')
-    .eq('pool_id', poolId)
-    .eq('user_id', user.id)
-    .maybeSingle()
-  if (!membership.data) return null
+  const locked = await isTournamentLockedAsync()
 
-  // List of users in the pool (with profile names)
-  const memberRes = await supabase
+  if (!locked) {
+    const membership = await supabase
+      .from('pool_members')
+      .select('pool_id')
+      .eq('pool_id', poolId)
+      .eq('user_id', user.id)
+      .maybeSingle()
+    if (!membership.data) return null
+  }
+
+  const membersRes = await supabase
     .from('pool_members')
     .select('user_id, profile:profiles(display_name)')
     .eq('pool_id', poolId)
 
   const nameMap = new Map<string, string>()
-  for (const row of memberRes.data ?? []) {
+  for (const row of membersRes.data ?? []) {
     const profile = Array.isArray(row.profile) ? row.profile[0] : row.profile
     nameMap.set(row.user_id, profile?.display_name ?? 'Unknown')
   }
@@ -123,7 +127,11 @@ export async function getMatchPredictions(
     const actualScoreB = actualRes.data?.score_b ?? null
     const hasResult = actualScoreA !== null && actualScoreB !== null
 
-    const predictions: GroupUserPrediction[] = (predRes.data ?? []).map((row) => {
+    const rawRows = locked
+      ? (predRes.data ?? [])
+      : (predRes.data ?? []).filter((row) => row.user_id === user.id)
+
+    const predictions: GroupUserPrediction[] = rawRows.map((row) => {
       const ps = row.predicted_score_a as number
       const pb = row.predicted_score_b as number
       let points = 0
@@ -187,7 +195,11 @@ export async function getMatchPredictions(
   const actualWinnerId = (actualRes.data?.winner_id as number | undefined) ?? null
   const actualWinnerName = actualWinnerId ? getTeamById(actualWinnerId).name : null
 
-  const predictions: KnockoutUserPrediction[] = (predRes.data ?? []).map((row) => {
+  const koRows = locked
+    ? (predRes.data ?? [])
+    : (predRes.data ?? []).filter((row) => row.user_id === user.id)
+
+  const predictions: KnockoutUserPrediction[] = koRows.map((row) => {
     const winnerId = row.predicted_winner_id as number
     const correct = actualWinnerId !== null && winnerId === actualWinnerId
     return {

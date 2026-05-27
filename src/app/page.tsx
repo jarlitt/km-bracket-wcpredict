@@ -1,12 +1,10 @@
-import Link from 'next/link'
-import { buttonVariants } from '@/components/ui/button'
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { DashboardSection } from '@/components/home/dashboard-section'
+import { HeroCta } from '@/components/home/dashboard-section'
 
 const FEATURES = [
   {
@@ -45,23 +43,8 @@ export default function HomePage() {
         <p className="mt-6 max-w-xl text-lg text-muted-foreground">
           Predict every match. Climb the leaderboard. Prove you know football.
         </p>
-        <div className="mt-10 flex gap-4">
-          <Link
-            href="/predict/groups"
-            className={buttonVariants({ size: 'lg', className: 'px-8 text-base' })}
-          >
-            Start Predicting
-          </Link>
-          <Link
-            href="/rules"
-            className={buttonVariants({ variant: 'outline', size: 'lg', className: 'px-8 text-base' })}
-          >
-            View Rules
-          </Link>
-        </div>
+        <HeroCta />
       </section>
-
-      <DashboardSection />
 
       <section className="mx-auto max-w-5xl px-4 pb-20">
         <div className="grid gap-6 md:grid-cols-3">

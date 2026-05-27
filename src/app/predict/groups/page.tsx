@@ -159,8 +159,37 @@ function MiniStandings({
   )
 }
 
+function useStickyOffsets() {
+  const groupSelectorRef = useRef<HTMLDivElement>(null)
+  const [stepperOffset, setStepperOffset] = useState(0)
+  const [sidebarOffset, setSidebarOffset] = useState(0)
+
+  useEffect(() => {
+    const navbar = document.querySelector('header')
+    const stepper = document.getElementById('predict-stepper')
+    const groupSelector = groupSelectorRef.current
+    if (!navbar || !stepper) return
+
+    const measure = () => {
+      const base = navbar.offsetHeight + stepper.offsetHeight
+      setStepperOffset(base)
+      setSidebarOffset(base + (groupSelector?.offsetHeight ?? 0))
+    }
+
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(navbar)
+    ro.observe(stepper)
+    if (groupSelector) ro.observe(groupSelector)
+    return () => ro.disconnect()
+  }, [])
+
+  return { groupSelectorRef, stepperOffset, sidebarOffset }
+}
+
 export default function GroupsPage() {
   const [selectedGroup, setSelectedGroup] = useState<string>('A')
+  const { groupSelectorRef, stepperOffset, sidebarOffset } = useStickyOffsets()
   const {
     groupPredictions,
     tieBreakResolutions,
@@ -199,7 +228,11 @@ export default function GroupsPage() {
       </div>
 
       {/* Sticky group selector (+ mini standings on mobile only) */}
-      <div className="sticky top-35 z-30 -mx-4 px-4 py-3 bg-background/95 backdrop-blur-sm border-b border-border/30 space-y-3">
+      <div
+        ref={groupSelectorRef}
+        className="sticky z-30 -mx-4 px-4 py-3 bg-background/95 backdrop-blur-sm border-b border-border/30 space-y-3"
+        style={{ top: stepperOffset }}
+      >
         <GroupSelector
           selectedGroup={selectedGroup}
           onSelect={setSelectedGroup}
@@ -298,7 +331,7 @@ export default function GroupsPage() {
 
         {/* Right: sticky standings sidebar (desktop only, 1/3 width) */}
         <div className="hidden lg:block w-1/3 shrink-0">
-          <div className="sticky top-56 space-y-3">
+          <div className="sticky space-y-3" style={{ top: sidebarOffset }}>
             <MiniStandings
               groupId={selectedGroup}
               groupPredictions={groupPredictions}

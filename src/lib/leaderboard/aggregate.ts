@@ -16,6 +16,11 @@ interface PoolRow {
   name: string
 }
 
+interface SubmissionRow {
+  user_id: string
+  pool_id: string
+}
+
 export interface CountryStanding {
   slug: string
   name: string
@@ -36,34 +41,58 @@ export function aggregateLeaderboard(
   scores: ScoreRow[],
   profiles: ProfileRow[],
   pools: PoolRow[],
+  submissions: SubmissionRow[] = [],
 ): { countryStandings: CountryStanding[]; globalPlayers: GlobalPlayer[] } {
   const profileById = new Map(profiles.map((profile) => [profile.id, profile]))
+  const poolById = new Map(pools.map((pool) => [pool.id, pool]))
   const statsByCountry = new Map<string, { totalScore: number; memberCount: number }>()
 
   for (const pool of pools) {
     statsByCountry.set(pool.slug, { totalScore: 0, memberCount: 0 })
   }
 
-  const globalPlayers = scores
-    .map((score) => {
-      const profile = profileById.get(score.user_id)
-      if (!profile) return null
-      const stats = statsByCountry.get(profile.country)
-      if (stats) {
-        stats.totalScore += score.total_score
-        stats.memberCount += 1
-      }
-      return {
-        rank: 0,
-        userId: score.user_id,
-        displayName: profile.display_name,
-        country: profile.country,
-        totalScore: score.total_score,
-      }
+  const scoredUserIds = new Set(scores.map((s) => s.user_id))
+
+  const globalPlayers: GlobalPlayer[] = []
+
+  for (const score of scores) {
+    const profile = profileById.get(score.user_id)
+    if (!profile) continue
+    const stats = statsByCountry.get(profile.country)
+    if (stats) {
+      stats.totalScore += score.total_score
+      stats.memberCount += 1
+    }
+    globalPlayers.push({
+      rank: 0,
+      userId: score.user_id,
+      displayName: profile.display_name,
+      country: profile.country,
+      totalScore: score.total_score,
     })
-    .filter((player): player is Omit<GlobalPlayer, 'rank'> & { rank: number } => player !== null)
-    .sort((a, b) => b.totalScore - a.totalScore || a.displayName.localeCompare(b.displayName))
-    .map((player, index) => ({ ...player, rank: index + 1 }))
+  }
+
+  for (const sub of submissions) {
+    if (scoredUserIds.has(sub.user_id)) continue
+    const profile = profileById.get(sub.user_id)
+    if (!profile) continue
+    const pool = poolById.get(sub.pool_id)
+    if (!pool) continue
+    const stats = statsByCountry.get(pool.slug)
+    if (stats) {
+      stats.memberCount += 1
+    }
+    globalPlayers.push({
+      rank: 0,
+      userId: sub.user_id,
+      displayName: profile.display_name,
+      country: profile.country,
+      totalScore: 0,
+    })
+  }
+
+  globalPlayers.sort((a, b) => b.totalScore - a.totalScore || a.displayName.localeCompare(b.displayName))
+  globalPlayers.forEach((player, index) => { player.rank = index + 1 })
 
   const countryStandings = pools
     .map((pool, index) => {

@@ -2,20 +2,25 @@ import Link from 'next/link'
 import { GlobalPlayerTable } from '@/components/leaderboard/global-player-table'
 import { PoolFlag } from '@/components/pools/pool-flag'
 import { aggregateLeaderboard } from '@/lib/leaderboard/aggregate'
+import { isTournamentLockedAsync } from '@/lib/matches/lock-server'
 import { createClient } from '@/lib/supabase/server'
 
 export default async function LeaderboardPage() {
   const supabase = await createClient()
-  const [{ data: scores }, { data: profiles }, { data: pools }] = await Promise.all([
+  const locked = await isTournamentLockedAsync()
+  const { data: { user } } = await supabase.auth.getUser()
+  const [{ data: scores }, { data: profiles }, { data: pools }, { data: submissions }] = await Promise.all([
     supabase.from('user_scores').select('user_id, pool_id, total_score'),
     supabase.from('profiles').select('id, display_name, country'),
     supabase.from('pools').select('id, slug, name').eq('is_active', true),
+    supabase.from('submissions').select('user_id, pool_id'),
   ])
 
   const { countryStandings, globalPlayers } = aggregateLeaderboard(
     scores ?? [],
     profiles ?? [],
     pools ?? [],
+    submissions ?? [],
   )
 
   return (
@@ -64,6 +69,8 @@ export default async function LeaderboardPage() {
         <GlobalPlayerTable
           players={globalPlayers}
           countries={countryStandings.map(({ slug, name }) => ({ slug, name }))}
+          locked={locked}
+          currentUserId={user?.id}
         />
       </section>
     </main>

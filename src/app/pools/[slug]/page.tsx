@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { PoolFlag } from '@/components/pools/pool-flag'
-import { isTournamentLockedAsync } from '@/lib/matches/lock-server'
 import { createClient } from '@/lib/supabase/server'
 
 export default async function CountryPoolPage({
@@ -11,8 +10,6 @@ export default async function CountryPoolPage({
 }) {
   const { slug } = await params
   const supabase = await createClient()
-  const locked = await isTournamentLockedAsync()
-
   const { data: pool } = await supabase
     .from('pools')
     .select('id, slug, name')
@@ -20,18 +17,34 @@ export default async function CountryPoolPage({
     .maybeSingle()
   if (!pool) notFound()
 
-  const { data: rows } = await supabase
-    .from('user_scores')
-    .select('user_id, total_score, profiles!inner(display_name, country)')
-    .eq('profiles.country', slug)
-    .order('total_score', { ascending: false })
+  const [{ data: scoreRows }, { data: submissionRows }] = await Promise.all([
+    supabase
+      .from('user_scores')
+      .select('user_id, total_score, profiles!inner(display_name, country)')
+      .eq('pool_id', pool.id)
+      .order('total_score', { ascending: false }),
+    supabase
+      .from('submissions')
+      .select('user_id, profiles!inner(display_name, country)')
+      .eq('pool_id', pool.id),
+  ])
 
-  const players = (rows ?? []) as Array<{
+  type PlayerRow = {
     user_id: string
     total_score: number
     profiles: { display_name: string; country: string } | Array<{ display_name: string; country: string }>
-  }>
+  }
 
+  const scoredIds = new Set((scoreRows ?? []).map((r) => r.user_id))
+  const fromScores: PlayerRow[] = (scoreRows ?? []) as PlayerRow[]
+  const fromSubmissions: PlayerRow[] = ((submissionRows ?? []) as Array<{
+    user_id: string
+    profiles: { display_name: string; country: string } | Array<{ display_name: string; country: string }>
+  }>)
+    .filter((r) => !scoredIds.has(r.user_id))
+    .map((r) => ({ user_id: r.user_id, total_score: 0, profiles: r.profiles }))
+
+  const players = [...fromScores, ...fromSubmissions]
   const total = players.reduce((sum, row) => sum + (row.total_score ?? 0), 0)
   const avg = players.length === 0 ? 0 : total / players.length
 
@@ -59,24 +72,16 @@ export default async function CountryPoolPage({
             const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles
             const displayName = profile?.display_name ?? 'Unknown'
 
-            const content = (
-              <div className="flex items-center gap-3 border-b border-border/30 px-4 py-3 last:border-b-0">
-                <span className="w-8 text-sm font-bold text-muted-foreground">#{index + 1}</span>
-                <span className="flex-1 text-sm font-medium">{displayName}</span>
-                <span className="text-sm font-bold">{row.total_score}</span>
-              </div>
-            )
-
-            return locked ? (
+            return (
               <Link
                 key={row.user_id}
                 href={`/pools/${slug}/predictions/${row.user_id}`}
-                className="block transition-colors hover:bg-muted/30"
+                className="flex items-center gap-3 border-b border-border/30 px-4 py-3 last:border-b-0 transition-colors hover:bg-muted/30"
               >
-                {content}
+                <span className="w-8 text-sm font-bold text-muted-foreground">#{index + 1}</span>
+                <span className="flex-1 text-sm font-medium">{displayName}</span>
+                <span className="text-sm font-bold">{row.total_score}</span>
               </Link>
-            ) : (
-              <div key={row.user_id}>{content}</div>
             )
           })
         )}

@@ -205,20 +205,22 @@ function BracketPageInner() {
           <Link href={`${basePath}/thirds`}>
             <Button variant="outline" size="sm">Back to Best 3rds</Button>
           </Link>
-          {submitted ? (
+          {readOnlySubmitted ? (
             <Link href={`${basePath}/summary`}>
               <Button size="sm">View Summary</Button>
             </Link>
           ) : (
             <>
-              <Button
-                size="sm"
-                onClick={handleSubmit}
-                disabled={submitting}
-                className={canSubmit ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-emerald-600/50 hover:bg-emerald-600/60'}
-              >
-                {submitting ? 'Submitting...' : 'Submit Predictions'}
-              </Button>
+              {!submitted && (
+                <Button
+                  size="sm"
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  className={canSubmit ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-emerald-600/50 hover:bg-emerald-600/60'}
+                >
+                  {submitting ? 'Submitting...' : 'Submit Predictions'}
+                </Button>
+              )}
               <button
                 type="button"
                 onClick={autofillKnockoutDemo}

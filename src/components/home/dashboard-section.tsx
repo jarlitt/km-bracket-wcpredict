@@ -2,55 +2,117 @@
 
 import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
 import { useAuth } from '@/context/auth-context'
 import { usePredictions } from '@/context/predictions-context'
 
-export function DashboardSection() {
-  const { user, loading: authLoading } = useAuth()
-  const { submitted, groupPredictions, dbLoaded } = usePredictions()
+const TOTAL_GROUP_MATCHES = 72
+const TOTAL_KNOCKOUT_MATCHES = 32
 
-  if (authLoading || !dbLoaded) return null
-  if (!user) return null
+export function HeroCta() {
+  const { user, loading: authLoading } = useAuth()
+  const { submitted, groupPredictions, totalGroupPredictions, totalKnockoutPredictions, dbLoaded } = usePredictions()
+
+  if (authLoading || !dbLoaded) {
+    return (
+      <div className="mt-10 flex gap-4">
+        <Link
+          href="/predict/groups"
+          className={buttonVariants({ size: 'lg', className: 'px-8 text-base' })}
+        >
+          Start Predicting
+        </Link>
+        <Link
+          href="/rules"
+          className={buttonVariants({ variant: 'outline', size: 'lg', className: 'px-8 text-base' })}
+        >
+          View Rules
+        </Link>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="mt-10 flex gap-4">
+        <Link
+          href="/predict/groups"
+          className={buttonVariants({ size: 'lg', className: 'px-8 text-base' })}
+        >
+          Start Predicting
+        </Link>
+        <Link
+          href="/rules"
+          className={buttonVariants({ variant: 'outline', size: 'lg', className: 'px-8 text-base' })}
+        >
+          View Rules
+        </Link>
+      </div>
+    )
+  }
 
   const started = Object.keys(groupPredictions).length > 0
+  const totalPredictions = totalGroupPredictions + totalKnockoutPredictions
+  const totalMatches = TOTAL_GROUP_MATCHES + TOTAL_KNOCKOUT_MATCHES
+  const overallProgress = Math.round((totalPredictions / totalMatches) * 100)
+
+  if (submitted) {
+    return (
+      <div className="mt-10 space-y-4">
+        <div className="flex flex-wrap justify-center gap-3">
+          <Link
+            href="/leaderboard"
+            className={buttonVariants({ size: 'lg', className: 'px-6 text-base' })}
+          >
+            View Leaderboard
+          </Link>
+          <Link
+            href={`/pools/${user.country}`}
+            className={buttonVariants({ variant: 'outline', size: 'lg', className: 'px-6 text-base' })}
+          >
+            My Office
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  if (started) {
+    return (
+      <div className="mt-10 w-full max-w-sm space-y-4">
+        <Link
+          href="/predict/groups"
+          className={buttonVariants({ size: 'lg', className: 'w-full px-8 text-base' })}
+        >
+          Continue Predicting
+        </Link>
+        <div className="flex items-center gap-3">
+          <Progress
+            value={overallProgress}
+            className="flex-1 h-2 [&_[data-slot=progress-indicator]]:bg-emerald-500"
+          />
+          <span className="text-xs text-emerald-400 whitespace-nowrap">
+            {totalPredictions}/{totalMatches}
+          </span>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <section className="mx-auto max-w-5xl px-4 pb-12">
-      <div className="rounded-xl border border-border/50 bg-card/50 p-6 text-center space-y-3">
-        <p className="text-sm text-muted-foreground">
-          Signed in as <span className="font-medium text-foreground">{user.displayName}</span>
-        </p>
-        {submitted ? (
-          <div className="flex flex-wrap justify-center gap-3">
-            <Link
-              href="/leaderboard"
-              className={buttonVariants({ size: 'lg', className: 'px-6' })}
-            >
-              View Leaderboard
-            </Link>
-            <Link
-              href={`/pools/${user.country}`}
-              className={buttonVariants({ variant: 'outline', size: 'lg', className: 'px-6' })}
-            >
-              My Office
-            </Link>
-          </div>
-        ) : started ? (
-          <Link
-            href="/predict/groups"
-            className={buttonVariants({ size: 'lg', className: 'px-8' })}
-          >
-            Continue Your Bracket
-          </Link>
-        ) : (
-          <Link
-            href="/predict/groups"
-            className={buttonVariants({ size: 'lg', className: 'px-8' })}
-          >
-            Make Your Bracket
-          </Link>
-        )}
-      </div>
-    </section>
+    <div className="mt-10 flex gap-4">
+      <Link
+        href="/predict/groups"
+        className={buttonVariants({ size: 'lg', className: 'px-8 text-base' })}
+      >
+        Start Predicting
+      </Link>
+      <Link
+        href="/rules"
+        className={buttonVariants({ variant: 'outline', size: 'lg', className: 'px-8 text-base' })}
+      >
+        View Rules
+      </Link>
+    </div>
   )
 }
