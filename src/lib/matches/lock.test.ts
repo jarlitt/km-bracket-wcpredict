@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   FIRST_MATCH_KICKOFF_UTC,
+  isLockedAt,
   isTournamentLocked,
   parseGroupMatchKickoffUtc,
 } from './lock'
@@ -20,5 +21,18 @@ describe('match lock helpers', () => {
     expect(FIRST_MATCH_KICKOFF_UTC.toISOString()).toBe('2026-06-11T19:00:00.000Z')
     expect(isTournamentLocked(new Date('2026-06-11T18:59:59.999Z'))).toBe(false)
     expect(isTournamentLocked(new Date('2026-06-11T19:00:00.000Z'))).toBe(true)
+  })
+})
+
+describe('tournament lock helpers', () => {
+  it('fallback kickoff matches the first group match', () => {
+    expect(FIRST_MATCH_KICKOFF_UTC.toISOString()).toBe('2026-06-11T19:00:00.000Z')
+  })
+
+  it('compares a date against lock_at', () => {
+    const lockAt = new Date('2026-06-11T19:00:00Z')
+    expect(isLockedAt(new Date('2026-06-11T18:59:59Z'), lockAt)).toBe(false)
+    expect(isLockedAt(new Date('2026-06-11T19:00:00Z'), lockAt)).toBe(true)
+    expect(isLockedAt(new Date('2026-06-12T00:00:00Z'), lockAt)).toBe(true)
   })
 })
