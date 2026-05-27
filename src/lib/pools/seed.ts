@@ -8,7 +8,6 @@ export interface SeedPool {
 }
 
 export const PHASE_1_POOLS: SeedPool[] = [
-  { name: 'All Offices', slug: 'all-offices', type: 'office', visibility: 'public' },
   { name: 'Spain Office', slug: 'spain', type: 'office', visibility: 'public' },
   { name: 'Malta Office', slug: 'malta', type: 'office', visibility: 'public' },
   { name: 'Nigeria Office', slug: 'nigeria', type: 'office', visibility: 'public' },

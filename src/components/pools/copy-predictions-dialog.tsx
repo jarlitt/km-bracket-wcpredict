@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { PoolFlag } from '@/components/pools/pool-cards'
+import { PoolFlag } from '@/components/pools/pool-flag'
 import { usePools } from '@/context/pool-context'
 import { usePredictions } from '@/context/predictions-context'
 import { isTournamentLocked } from '@/lib/matches/lock'

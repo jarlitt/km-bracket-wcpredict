@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { PoolFlag } from '@/components/pools/pool-cards'
+import { PoolFlag } from '@/components/pools/pool-flag'
 import { usePools } from '@/context/pool-context'
 import { PoolMenuSections } from '@/components/pools/pool-menu-sections'
 import Link from 'next/link'

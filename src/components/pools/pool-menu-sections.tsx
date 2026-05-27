@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { PoolFlag } from '@/components/pools/pool-cards'
+import { PoolFlag } from '@/components/pools/pool-flag'
 import { resolvePoolPredictionLandingPath } from '@/lib/pools/path'
 import type { Pool } from '@/types'
 

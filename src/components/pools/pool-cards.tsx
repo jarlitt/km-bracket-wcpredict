@@ -1,90 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowRight, Globe } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { cn } from '@/lib/utils'
 import type { MyPoolSummary } from '@/app/actions/pools'
-
-// Pool slug → flag filename in /public/country-flags/Countries. Office pools
-// borrow their city's country flag; `all-offices` uses an "international"
-// (globe-style) crest to read as the cross-office bracket.
-const POOL_FLAG_BY_SLUG: Record<string, string> = {
-  'all-offices': 'international.svg',
-  spain: 'spain.svg',
-  malta: 'malta.svg',
-  nigeria: 'nigeria.svg',
-  'south-africa': 'south-africa.svg',
-  zambia: 'zambia.svg',
-  uk: 'united-kingdom.svg',
-}
-
-export function PoolFlag({
-  slug,
-  size = 32,
-  className,
-}: {
-  slug: string
-  size?: number
-  className?: string
-}) {
-  const file = POOL_FLAG_BY_SLUG[slug]
-  if (!file) {
-    return (
-      <span
-        className={cn(
-          'flex shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground',
-          className,
-        )}
-        style={{ width: size, height: size }}
-        aria-hidden="true"
-      >
-        <Globe className="size-4" />
-      </span>
-    )
-  }
-  // The fixed-size wrapper guarantees consistent rendering even for SVGs that
-  // rely on <pattern> fills (e.g. spain, united-kingdom), which sometimes
-  // collapse the intrinsic size of a bare <img>.
-  return (
-    <span
-      className={cn(
-        'inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-border/40 bg-card',
-        className,
-      )}
-      style={{ width: size, height: size }}
-      aria-hidden="true"
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={`/country-flags/Countries/${file}`}
-        alt=""
-        width={size}
-        height={size}
-        loading="lazy"
-        className="block h-full w-full object-cover"
-      />
-    </span>
-  )
-}
-
-export function ArrowChip({ disabled = false }: { disabled?: boolean }) {
-  return (
-    <span
-      className={cn(
-        'flex size-8 shrink-0 items-center justify-center rounded-full border transition-colors',
-        disabled
-          ? 'border-border/30 bg-muted/40 text-muted-foreground/60'
-          : 'border-border/40 bg-muted/40 text-muted-foreground group-hover:border-primary/40 group-hover:bg-primary/10 group-hover:text-primary',
-      )}
-      aria-hidden="true"
-    >
-      <ArrowRight className="size-3.5" />
-    </span>
-  )
-}
+import { ArrowChip, PoolFlag } from '@/components/pools/pool-flag'
 
 /**
  * Card for pools the user has already joined. Renders a progress bar when
