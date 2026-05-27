@@ -26,7 +26,7 @@ export function CountdownTimer({ lockAt }: { lockAt: string }) {
   useEffect(() => {
     const tick = () => setTimeLeft(getTimeLeft(lockAt))
     tick()
-    const id = setInterval(tick, 1_000)
+    const id = setInterval(tick, 60_000)
     return () => clearInterval(id)
   }, [lockAt])
 

@@ -77,7 +77,7 @@ export function HeroSection({ lockAt, locked }: HeroSectionProps) {
       {locked && (
         <div className="mt-8 flex gap-4">
           <Link
-            href="/leaderboard"
+            href="/matches"
             className={buttonVariants({ size: 'lg', className: 'px-8 text-base' })}
           >
             Live Scores

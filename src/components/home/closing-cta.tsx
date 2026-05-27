@@ -2,14 +2,12 @@
 
 import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
-import { useAuth } from '@/context/auth-context'
 import { usePredictions } from '@/context/predictions-context'
 
 const TOTAL_GROUP_MATCHES = 72
 const TOTAL_KNOCKOUT_MATCHES = 32
 
 export function ClosingCta({ locked }: { locked: boolean }) {
-  const { user } = useAuth()
   const {
     submitted,
     groupPredictions,
