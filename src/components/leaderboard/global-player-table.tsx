@@ -47,7 +47,7 @@ export function GlobalPlayerTable({
       </div>
       <div className="overflow-hidden rounded-xl border border-border/50 bg-card/50">
         {filtered.length === 0 ? (
-          <p className="px-4 py-8 text-center text-sm text-muted-foreground">No submissions yet.</p>
+          <p className="px-4 py-8 text-center text-sm text-muted-foreground">No members yet.</p>
         ) : (
           filtered.map((player) => (
             <PlayerRow key={player.userId} player={player} locked={locked} isOwn={player.userId === currentUserId} />
@@ -59,14 +59,33 @@ export function GlobalPlayerTable({
 }
 
 function PlayerRow({ player, locked, isOwn }: { player: GlobalPlayer; locked: boolean; isOwn: boolean }) {
+  const statusBadge = player.submitted ? (
+    <span className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+      Submitted
+    </span>
+  ) : (
+    <span className="shrink-0 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+      Not submitted
+    </span>
+  )
+
   const content = (
     <>
       <span className="w-8 text-sm font-bold text-muted-foreground">#{player.rank}</span>
       <PoolFlag slug={player.country} size={24} />
       <span className="flex-1 text-sm font-medium">{player.displayName}</span>
-      <span className="text-sm font-bold">{player.totalScore}</span>
+      {statusBadge}
+      <span className="w-10 text-right text-sm font-bold">{player.totalScore}</span>
     </>
   )
+
+  if (!player.submitted) {
+    return (
+      <div className="flex items-center gap-3 border-b border-border/30 px-4 py-3 last:border-b-0 opacity-60">
+        {content}
+      </div>
+    )
+  }
 
   if (locked || isOwn) {
     return (

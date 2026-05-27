@@ -9,11 +9,12 @@ export default async function LeaderboardPage() {
   const supabase = await createClient()
   const locked = await isTournamentLockedAsync()
   const { data: { user } } = await supabase.auth.getUser()
-  const [{ data: scores }, { data: profiles }, { data: pools }, { data: submissions }] = await Promise.all([
+  const [{ data: scores }, { data: profiles }, { data: pools }, { data: submissions }, { data: members }] = await Promise.all([
     supabase.from('user_scores').select('user_id, pool_id, total_score'),
     supabase.from('profiles').select('id, display_name, country'),
     supabase.from('pools').select('id, slug, name').eq('is_active', true),
     supabase.from('submissions').select('user_id, pool_id'),
+    supabase.from('pool_members').select('user_id, pool_id'),
   ])
 
   const { countryStandings, globalPlayers } = aggregateLeaderboard(
@@ -21,6 +22,7 @@ export default async function LeaderboardPage() {
     profiles ?? [],
     pools ?? [],
     submissions ?? [],
+    members ?? [],
   )
 
   return (
@@ -56,8 +58,8 @@ export default async function LeaderboardPage() {
                 <p className="font-bold">{entry.totalScore}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Players</p>
-                <p className="font-bold">{entry.memberCount}</p>
+                <p className="text-xs text-muted-foreground">Members</p>
+                <p className="font-bold">{entry.totalMembers}</p>
               </div>
             </div>
           </Link>
