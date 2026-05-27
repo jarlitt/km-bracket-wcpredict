@@ -91,6 +91,24 @@ export function writePredictionsToStorage(
   safeSet(storage, predictionsStorageKey(scope, poolId), JSON.stringify(state))
 }
 
+export const PREDICTIONS_STORAGE_PREFIX = STORAGE_PREFIX
+export const ANON_DRAFT_STORAGE_KEY = `${STORAGE_PREFIX}:${ANON_SCOPE}:draft`
+
+export function scopedPredictionsStorageKey(userId: string, poolId: string): string {
+  return `${STORAGE_PREFIX}:${userId}:${poolId}`
+}
+
+export function legacyAnonPredictionKeys(storage: Storage): string[] {
+  const keys: string[] = []
+  for (let index = 0; index < storage.length; index++) {
+    const key = storage.key(index)
+    if (key?.startsWith(`${STORAGE_PREFIX}:${ANON_SCOPE}:`) && key !== ANON_DRAFT_STORAGE_KEY) {
+      keys.push(key)
+    }
+  }
+  return keys
+}
+
 function safeGet(storage: StorageLike, key: string): string | null {
   try {
     return storage.getItem(key)
