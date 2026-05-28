@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { shouldPromptForUnsavedChangesNavigation } from './edit-mode-guard'
+import { shouldPromptForUnsavedChangesNavigation } from './unsaved-changes-guard'
 
 describe('shouldPromptForUnsavedChangesNavigation', () => {
   it('allows moving between prediction steps', () => {

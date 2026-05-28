@@ -17,7 +17,7 @@ import {
 import { useAuth } from '@/context/auth-context'
 import { usePredictions } from '@/context/predictions-context'
 import { PredictProgressBar } from '@/components/prediction/predict-progress-bar'
-import { shouldPromptForUnsavedChangesNavigation } from '@/lib/navigation/edit-mode-guard'
+import { shouldPromptForUnsavedChangesNavigation } from '@/lib/navigation/unsaved-changes-guard'
 import { predictSummaryHref } from '@/lib/navigation/predict-routes'
 import {
   clearPendingSubmit,
