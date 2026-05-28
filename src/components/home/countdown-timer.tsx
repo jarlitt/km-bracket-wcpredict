@@ -20,9 +20,15 @@ function getTimeLeft(lockAt: string): TimeLeft | null {
   }
 }
 
+const PLACEHOLDER_TIME: TimeLeft = { days: 0, hours: 0, minutes: 0, seconds: 0 }
+
 export function CountdownTimer({ lockAt }: { lockAt: string }) {
-  const [timeLeft, setTimeLeft] = useState<TimeLeft | null>(() =>
-    getTimeLeft(lockAt),
+  // `undefined` means "not yet measured on the client". We render the
+  // placeholder for both the server pass and the very first client render so
+  // hydration sees identical HTML; the interval below replaces it with the
+  // real countdown. `null` means "the deadline has passed".
+  const [timeLeft, setTimeLeft] = useState<TimeLeft | null | undefined>(
+    undefined,
   )
 
   useEffect(() => {
@@ -32,13 +38,14 @@ export function CountdownTimer({ lockAt }: { lockAt: string }) {
     return () => clearInterval(id)
   }, [lockAt])
 
-  if (!timeLeft) return null
+  if (timeLeft === null) return null
 
+  const display = timeLeft ?? PLACEHOLDER_TIME
   const units: { value: number; label: string }[] = [
-    { value: timeLeft.days, label: 'DAYS' },
-    { value: timeLeft.hours, label: 'HOURS' },
-    { value: timeLeft.minutes, label: 'MIN' },
-    { value: timeLeft.seconds, label: 'SEC' },
+    { value: display.days, label: 'DAYS' },
+    { value: display.hours, label: 'HOURS' },
+    { value: display.minutes, label: 'MIN' },
+    { value: display.seconds, label: 'SEC' },
   ]
 
   return (
