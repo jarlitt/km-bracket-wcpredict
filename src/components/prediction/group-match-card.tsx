@@ -20,7 +20,7 @@ function clampScore(value: number): number {
   return Math.max(MIN_SCORE, Math.min(MAX_SCORE, value))
 }
 
-function TeamColumn({
+function TeamRow({
   team,
   score,
   onChange,
@@ -55,10 +55,17 @@ function TeamColumn({
   const incrementDisabled = disabled || score === MAX_SCORE
 
   return (
-    <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
-      <TeamFlag team={team} size={40} className="sm:size-12" />
-      <p className="font-medium text-xs sm:text-sm text-center leading-tight w-full truncate">{team.name}</p>
-      <div className="mt-1 flex items-center justify-center gap-1.5">
+    <div className="flex items-center gap-3 sm:gap-4">
+      <TeamFlag team={team} size={36} className="shrink-0 sm:size-10" />
+      <div className="flex min-w-0 flex-1 flex-col leading-tight">
+        <span className="truncate text-sm font-bold uppercase tracking-wide sm:text-base">
+          {team.name}
+        </span>
+        <span className="text-[11px] uppercase tracking-widest text-muted-foreground">
+          {team.code}
+        </span>
+      </div>
+      <div className="flex shrink-0 items-center gap-1.5">
         <button
           type="button"
           aria-label={`Decrease ${team.name} score`}
@@ -125,24 +132,29 @@ export function GroupMatchCard({ match, prediction, onPredictionChange, disabled
           <span className="text-[11px] font-medium text-muted-foreground/80">{kickoff.time}</span>
         </div>
       )}
-      <div className="flex items-stretch p-4 sm:p-5">
-      <TeamColumn
-        team={teamA}
-        score={prediction?.scoreA}
-        onChange={v => handleScoreChange('A', v)}
-        disabled={disabled}
-      />
+      <div className="space-y-3 p-4 sm:p-5">
+        <TeamRow
+          team={teamA}
+          score={prediction?.scoreA}
+          onChange={v => handleScoreChange('A', v)}
+          disabled={disabled}
+        />
 
-      <div className="flex items-center justify-center px-3 sm:px-4">
-        <span className="text-muted-foreground/60 font-bold text-sm">vs</span>
-      </div>
+        {/* vs divider: a faint hairline on either side with the label centered. */}
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-border/50" />
+          <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/70">
+            vs
+          </span>
+          <div className="h-px flex-1 bg-border/50" />
+        </div>
 
-      <TeamColumn
-        team={teamB}
-        score={prediction?.scoreB}
-        onChange={v => handleScoreChange('B', v)}
-        disabled={disabled}
-      />
+        <TeamRow
+          team={teamB}
+          score={prediction?.scoreB}
+          onChange={v => handleScoreChange('B', v)}
+          disabled={disabled}
+        />
       </div>
     </div>
   )
