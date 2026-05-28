@@ -152,22 +152,15 @@ export default function ThirdsPage() {
   const allComplete = completedGroups.length === 12
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24 sm:pb-0">
       <div>
         <h1 className="text-2xl font-bold">Best 3rds</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          The eight best third-place teams advance to the knockout stage. Resolve only best-third ties here.
+          {qualificationRelevantTieKeys.size > 0
+            ? 'The eight best third-place teams advance. Use the arrows to resolve ties around the cutoff.'
+            : 'The eight best third-place teams advance to the knockout stage.'}
+          <TieBreakerRulesHelp type="third-place" variant="standalone" />
         </p>
-        <div className="flex gap-2 mt-3">
-          <Link href={`${basePath}/groups`}>
-            <Button variant="outline" size="sm">Edit Scores</Button>
-          </Link>
-          {allComplete && (
-            <Link href={`${basePath}/bracket`}>
-              <Button size="sm">Next: Bracket</Button>
-            </Link>
-          )}
-        </div>
       </div>
 
       {!allComplete && (
@@ -179,15 +172,6 @@ export default function ThirdsPage() {
           <Link href={`${basePath}/groups`}>
             <Button variant="outline" size="sm" className="mt-2">Go to Group Predictions</Button>
           </Link>
-        </div>
-      )}
-
-      {allComplete && qualificationRelevantTieKeys.size > 0 && (
-        <div className="flex items-start justify-between gap-3 rounded-xl border border-blue-500/30 bg-blue-500/10 p-4">
-          <p className="text-sm text-blue-100">
-            Some third-place teams are tied around the qualification cutoff. Use the arrows to choose who advances. Bracket slots are assigned from FIFA&rsquo;s matchup table.
-          </p>
-          <TieBreakerRulesHelp type="third-place" />
         </div>
       )}
 
@@ -337,7 +321,9 @@ export default function ThirdsPage() {
         </div>
       </div>
 
-      <div className="flex gap-2 justify-between items-center">
+      {/* Inline bottom CTAs on desktop — duplicated by the mobile sticky bar
+          below so we hide the inline version on small screens. */}
+      <div className="hidden sm:flex gap-2 justify-between items-center">
         <Link href={`${basePath}/groups`}>
           <Button variant="outline" size="sm">Edit Scores</Button>
         </Link>
@@ -346,6 +332,24 @@ export default function ThirdsPage() {
             <Button size="sm">Next: Bracket</Button>
           </Link>
         )}
+      </div>
+
+      {/* Mobile-only sticky bottom bar with the same CTAs. iOS safe-area
+          aware so the buttons clear the home indicator. */}
+      <div
+        className="sm:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border/40 bg-background/95 backdrop-blur-sm px-4 pt-3"
+        style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
+      >
+        <div className="flex gap-2">
+          <Link href={`${basePath}/groups`} className="flex-1">
+            <Button variant="outline" className="w-full">Edit Scores</Button>
+          </Link>
+          {allComplete && (
+            <Link href={`${basePath}/bracket`} className="flex-1">
+              <Button className="w-full">Next: Bracket &rarr;</Button>
+            </Link>
+          )}
+        </div>
       </div>
     </div>
   )

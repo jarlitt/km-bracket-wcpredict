@@ -59,7 +59,9 @@ function BracketPageInner() {
     if (!submittedSnapshot) return undefined
     const baseline = submittedSnapshot.knockoutMatchups
     const changed = new Set<string>()
-    for (const match of resolvedMatches) {
+    for (const match of knockoutMatches) {
+      if (match.round !== 'R32') continue
+      if (match.id in knockoutPredictions) continue
       const base = baseline[match.id]
       if (!base) continue
       if (base.teamAId !== match.teamAId || base.teamBId !== match.teamBId) {
@@ -67,7 +69,7 @@ function BracketPageInner() {
       }
     }
     return changed.size > 0 ? changed : undefined
-  }, [resolvedMatches, submittedSnapshot])
+  }, [knockoutMatches, knockoutPredictions, submittedSnapshot])
 
   if (!allGroupsComplete) {
     return (
@@ -86,7 +88,7 @@ function BracketPageInner() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24 sm:pb-0">
       <div>
         <h1 className="text-2xl font-bold">Knockout Bracket</h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -94,16 +96,8 @@ function BracketPageInner() {
             ? 'Your predictions are locked. View your summary for details.'
             : `Click on a team to pick the winner. Picks: ${totalKnockoutPredictions}/32`}
         </p>
-        <div className="flex flex-wrap items-center gap-2 mt-3">
-          <Link href={`${basePath}/thirds`}>
-            <Button variant="outline" size="sm">Back to Best 3rds</Button>
-          </Link>
-          {submitted && (
-            <Link href={`${basePath}/summary`}>
-              <Button size="sm">View Summary</Button>
-            </Link>
-          )}
-          {!predictionsLocked && (
+        {!predictionsLocked && (
+          <div className="flex flex-wrap items-center gap-2 mt-3">
             <button
               type="button"
               onClick={autofillKnockoutDemo}
@@ -111,8 +105,8 @@ function BracketPageInner() {
             >
               <span className="dice-shake">🎲</span> Auto predict
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       <BracketView
@@ -123,7 +117,9 @@ function BracketPageInner() {
         highlightChanged={highlightChanged}
       />
 
-      <div className="flex gap-2 justify-between items-center">
+      {/* Inline bottom CTAs on desktop — duplicated by the mobile sticky bar
+          below so we hide the inline version on small screens. */}
+      <div className="hidden sm:flex gap-2 justify-between items-center">
         <Link href={`${basePath}/thirds`}>
           <Button variant="outline" size="sm">Back to Best 3rds</Button>
         </Link>
@@ -132,6 +128,24 @@ function BracketPageInner() {
             <Button size="sm">View Summary</Button>
           </Link>
         )}
+      </div>
+
+      {/* Mobile-only sticky bottom bar with the same CTAs. iOS safe-area
+          aware so the buttons clear the home indicator. */}
+      <div
+        className="sm:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border/40 bg-background/95 backdrop-blur-sm px-4 pt-3"
+        style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
+      >
+        <div className="flex gap-2">
+          <Link href={`${basePath}/thirds`} className="flex-1">
+            <Button variant="outline" className="w-full">&larr; Best 3rds</Button>
+          </Link>
+          {submitted && (
+            <Link href={`${basePath}/summary`} className="flex-1">
+              <Button className="w-full">View Summary</Button>
+            </Link>
+          )}
+        </div>
       </div>
     </div>
   )

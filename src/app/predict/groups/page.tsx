@@ -52,19 +52,10 @@ function GroupSelector({
   }
 
   return (
-    <div className="relative flex items-center gap-1">
-      {canScrollLeft && (
-        <button
-          onClick={() => scroll('left')}
-          className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-card border border-border/50 text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </button>
-      )}
-
+    <div className="relative">
       <div
         ref={scrollRef}
-        className="flex gap-1.5 overflow-x-auto scrollbar-hide flex-1"
+        className="flex gap-1.5 overflow-x-auto scrollbar-hide"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {GROUPS.map(group => {
@@ -87,14 +78,42 @@ function GroupSelector({
         })}
       </div>
 
-      {canScrollRight && (
+      {/* Blurred fade + arrow on the left edge. Pointer events disabled on the
+          gradient so the scroll area underneath stays interactive; only the
+          button itself catches clicks. */}
+      <div
+        className={cn(
+          'pointer-events-none absolute inset-y-0 left-0 flex items-center pr-6 pl-1 transition-opacity duration-200',
+          'bg-linear-to-r from-background via-background/80 to-transparent backdrop-blur-sm mask-[linear-gradient(to_right,black_60%,transparent)]',
+          canScrollLeft ? 'opacity-100' : 'opacity-0',
+        )}
+      >
+        <button
+          onClick={() => scroll('left')}
+          aria-label="Scroll groups left"
+          tabIndex={canScrollLeft ? 0 : -1}
+          className="pointer-events-auto shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-card/80 border border-border/50 text-muted-foreground hover:text-foreground backdrop-blur-md transition-colors"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div
+        className={cn(
+          'pointer-events-none absolute inset-y-0 right-0 flex items-center justify-end pl-6 pr-1 transition-opacity duration-200',
+          'bg-linear-to-l from-background via-background/80 to-transparent backdrop-blur-sm mask-[linear-gradient(to_left,black_60%,transparent)]',
+          canScrollRight ? 'opacity-100' : 'opacity-0',
+        )}
+      >
         <button
           onClick={() => scroll('right')}
-          className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-card border border-border/50 text-muted-foreground hover:text-foreground transition-colors"
+          aria-label="Scroll groups right"
+          tabIndex={canScrollRight ? 0 : -1}
+          className="pointer-events-auto shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-card/80 border border-border/50 text-muted-foreground hover:text-foreground backdrop-blur-md transition-colors"
         >
           <ChevronRight className="w-4 h-4" />
         </button>
-      )}
+      </div>
     </div>
   )
 }
@@ -174,7 +193,7 @@ function useStickyOffsets() {
     const measure = () => {
       const navH = navbar.offsetHeight
       const stepperH = stepper.offsetHeight
-      setStandingsOffset(navH + stepperH)
+      setStandingsOffset(navH + stepperH - 2)
       setSidebarOffset(navH + stepperH)
     }
 
@@ -207,7 +226,6 @@ export default function GroupsPage() {
 
   const matches = getMatchesByGroup(selectedGroup)
   const groupComplete = completedGroups.includes(selectedGroup)
-  const allComplete = completedGroups.length === 12
   const unresolvedGroupTies = useMemo(
     () => groupComplete ? findUnresolvedGroupTies(selectedGroup, groupPredictions) : [],
     [groupComplete, selectedGroup, groupPredictions],
@@ -243,21 +261,16 @@ export default function GroupsPage() {
         <p className="text-sm text-muted-foreground mt-1">
           Predict the score for each of the 72 group matches
         </p>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          {allComplete && (
-            <Link href="/predict/thirds">
-              <Button size="sm">Next: Best 3rds</Button>
-            </Link>
-          )}
-          {!predictionsLocked && (
+        {!predictionsLocked && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
               onClick={() => autofillDemo()}
               className="text-xs font-medium text-pink-400 hover:text-pink-300 transition-colors flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-pink-500/20 hover:border-pink-500/40 hover:bg-pink-500/5"
             >
               <span className="dice-shake">🎲</span> Auto predict all groups
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Group selector — scrolls with the page so the sticky surface stays

@@ -62,12 +62,12 @@ interface PredictionsContextType extends PredictionsState {
   isDirty: boolean
   submittedSnapshot: PredictionsState | null
   /**
-   * Bracket matchups freshly resolved from the user's CURRENT state (not the
+   * R32 matchups derived from the user's CURRENT group predictions (not the
    * last submission). `null` until all 12 groups have a complete prediction.
-   * Differs from `submittedSnapshot.knockoutMatchups` whenever group edits
-   * have flipped which teams advance vs. what was last submitted.
+   * Only contains R32 entries — these change when group edits flip which
+   * teams advance, but are unaffected by knockout picks.
    */
-  currentResolvedMatchups: Record<string, KnockoutMatchup> | null
+  currentBracketEntryMatchups: Record<string, KnockoutMatchup> | null
 }
 
 const PredictionsContext = createContext<PredictionsContextType | null>(null)
@@ -600,12 +600,15 @@ function ScopedPredictionsProvider({
   const totalKnockoutPredictions = Object.keys(state.knockoutPredictions).length
   const isDirty = computeIsDirty(state, submittedSnapshot)
   const predictionsLocked = isTournamentLocked()
-  const currentResolvedMatchups = useMemo<Record<string, KnockoutMatchup> | null>(() => {
+  const currentBracketEntryMatchups = useMemo<Record<string, KnockoutMatchup> | null>(() => {
     if (completedGroups.length !== 12) return null
     const generatedMatches = buildKnockoutMatchesForState(state)
-    const resolved = resolveKnockoutMatches(generatedMatches, state.knockoutPredictions)
-    return matchupsFromKnockoutMatches(resolved)
-  }, [state, completedGroups.length, buildKnockoutMatchesForState])
+    return Object.fromEntries(
+      generatedMatches
+        .filter((m) => m.round === 'R32')
+        .map((m) => [m.id, { teamAId: m.teamAId, teamBId: m.teamBId }]),
+    )
+  }, [state.groupPredictions, state.tieBreakResolutions, completedGroups.length, buildKnockoutMatchesForState])
 
   return (
     <PredictionsContext value={{
@@ -629,7 +632,7 @@ function ScopedPredictionsProvider({
       predictionsLocked,
       isDirty,
       submittedSnapshot,
-      currentResolvedMatchups,
+      currentBracketEntryMatchups,
     }}>
       {children}
     </PredictionsContext>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -25,8 +25,6 @@ import {
   readPendingSubmit,
   writePendingSubmit,
 } from '@/lib/predictions/pending-submit'
-import type { KnockoutMatchup } from '@/types'
-
 const TOTAL_GROUP_MATCHES = 72
 const TOTAL_KNOCKOUT_MATCHES = 32
 
@@ -36,23 +34,6 @@ const STEPS = [
   { href: '/predict/bracket', label: 'Bracket' },
   { href: '/predict/summary', label: 'Summary' },
 ] as const
-
-function isMatchupsEqual(
-  a: Record<string, KnockoutMatchup>,
-  b: Record<string, KnockoutMatchup>,
-): boolean {
-  const keys = new Set([...Object.keys(a), ...Object.keys(b)])
-  for (const key of keys) {
-    const av = a[key]
-    const bv = b[key]
-    if (!av || !bv) {
-      if (av !== bv) return false
-      continue
-    }
-    if (av.teamAId !== bv.teamAId || av.teamBId !== bv.teamBId) return false
-  }
-  return true
-}
 
 export default function PredictLayout({
   children,
@@ -72,8 +53,11 @@ export default function PredictLayout({
     discardUnsavedChanges,
     dbLoaded,
     submittedSnapshot,
-    currentResolvedMatchups,
+    currentBracketEntryMatchups,
+    knockoutPredictions,
   } = usePredictions()
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
   const [submitting, setSubmitting] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
   const [pendingSubmitAfterAuth, setPendingSubmitAfterAuth] = useState(() =>
@@ -84,9 +68,6 @@ export default function PredictLayout({
   >(null)
   const attemptedAuthSubmitRef = useRef(false)
   const currentHrefRef = useRef<string | null>(null)
-  const previousMatchupsRef = useRef<Record<string, KnockoutMatchup> | null>(
-    null,
-  )
 
   const allComplete =
     totalGroupPredictions >= TOTAL_GROUP_MATCHES &&
@@ -205,33 +186,33 @@ export default function PredictLayout({
     currentHrefRef.current = window.location.href
   }, [pathname])
 
-  // Toast when a group/tie-break edit causes the resolved bracket to differ
-  // from the user's last submission. We only fire after the snapshot is set
-  // (i.e. the user has submitted at least once), and only when the matchups
-  // actually changed since the previous render AND now differ from submitted.
-  useEffect(() => {
-    if (!submitted || !currentResolvedMatchups || !submittedSnapshot) return
-
-    if (previousMatchupsRef.current === null) {
-      previousMatchupsRef.current = currentResolvedMatchups
-      return
+  // Derive which R32 matches have unresolved bracket conflicts: teams differ
+  // from submitted snapshot AND the user hasn't re-picked a winner yet.
+  // Fully reactive — clears per-match as the user picks, no manual dismiss.
+  const unresolvedBracketConflicts = useMemo(() => {
+    if (!submitted || !currentBracketEntryMatchups || !submittedSnapshot) {
+      return 0
     }
-
-    const changedSinceLastRender = !isMatchupsEqual(
-      currentResolvedMatchups,
-      previousMatchupsRef.current,
+    const submittedR32 = Object.fromEntries(
+      Object.entries(submittedSnapshot.knockoutMatchups).filter(([k]) =>
+        k.startsWith('R32-'),
+      ),
     )
-    if (changedSinceLastRender) {
-      const differsFromSubmitted = !isMatchupsEqual(
-        currentResolvedMatchups,
-        submittedSnapshot.knockoutMatchups,
-      )
-      if (differsFromSubmitted) {
-        toast.info('Your bracket changed based on your latest group predictions.')
+    let count = 0
+    for (const [matchId, current] of Object.entries(currentBracketEntryMatchups)) {
+      const baseline = submittedR32[matchId]
+      if (!baseline) continue
+      const teamsChanged =
+        baseline.teamAId !== current.teamAId ||
+        baseline.teamBId !== current.teamBId
+      if (teamsChanged && !(matchId in knockoutPredictions)) {
+        count++
       }
     }
-    previousMatchupsRef.current = currentResolvedMatchups
-  }, [currentResolvedMatchups, submitted, submittedSnapshot])
+    return count
+  }, [submitted, currentBracketEntryMatchups, submittedSnapshot, knockoutPredictions])
+
+  const bracketChanged = unresolvedBracketConflicts > 0
 
   useEffect(() => {
     if (!isDirty) return
@@ -322,35 +303,53 @@ export default function PredictLayout({
         id="predict-stepper"
         className="sticky top-14 z-40 border-b border-border/30 bg-background/95 backdrop-blur-sm"
       >
-        <div className="max-w-7xl mx-auto px-4 py-2 space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-4">
+        <div className="max-w-7xl mx-auto px-4 py-2 space-y-2">
           <nav
             aria-label="Predict navigation"
-            className="flex items-center gap-1 overflow-x-auto scrollbar-hide sm:shrink-0"
+            className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide"
           >
             {STEPS.map((step) => {
               const isActive =
                 pathname === step.href || pathname.startsWith(`${step.href}/`)
+              const showBadge =
+                step.href === '/predict/bracket' && bracketChanged
               return (
-                <Link
-                  key={step.href}
-                  href={step.href}
-                  aria-current={isActive ? 'page' : undefined}
-                  className={cn(
-                    'px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors',
-                    isActive
-                      ? 'bg-card text-foreground border border-border/60'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-card/50',
+                <div key={step.href} className="relative">
+                  <Link
+                    href={step.href}
+                    aria-current={isActive ? 'page' : undefined}
+                    className={cn(
+                      'relative flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors',
+                      isActive
+                        ? 'bg-card text-foreground border border-border/80 shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-card/60',
+                    )}
+                  >
+                    {step.label}
+                    {showBadge && (
+                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-black leading-none">
+                        !
+                      </span>
+                    )}
+                  </Link>
+                  {showBadge && (
+                    <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 z-50 pointer-events-none">
+                      <div className="relative bg-amber-500/90 text-black text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">
+                        <div className="absolute left-1/2 -translate-x-1/2 -top-1 w-2 h-2 bg-amber-500/90 rotate-45" />
+                        {unresolvedBracketConflicts === 1
+                          ? '1 bracket match needs a new pick'
+                          : `${unresolvedBracketConflicts} bracket matches need new picks`}
+                      </div>
+                    </div>
                   )}
-                >
-                  {step.label}
-                </Link>
+                </div>
               )
             })}
           </nav>
-          <div className="flex items-center gap-3 sm:flex-1">
+          <div className="flex items-center gap-3">
             <PredictProgressBar
-              groupCount={totalGroupPredictions}
-              knockoutCount={totalKnockoutPredictions}
+              groupCount={mounted ? totalGroupPredictions : 0}
+              knockoutCount={mounted ? totalKnockoutPredictions : 0}
               className="flex-1 min-w-0"
             />
             {showSubmitInStrip && (
@@ -379,7 +378,17 @@ export default function PredictLayout({
         >
           <div className="max-w-7xl mx-auto px-4 py-2 flex items-center gap-3">
             <p className="flex-1 text-xs text-amber-300">
-              You have unsaved changes since your last submission.
+              You have unsaved changes.{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  discardUnsavedChanges()
+                  toast.info('Edits discarded.')
+                }}
+                className="underline underline-offset-2 hover:text-amber-200 transition-colors"
+              >
+                Discard
+              </button>
             </p>
             <Button
               size="sm"
