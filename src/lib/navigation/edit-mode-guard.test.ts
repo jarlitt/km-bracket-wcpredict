@@ -1,29 +1,29 @@
 import { describe, expect, it } from 'vitest'
-import { shouldPromptForEditNavigation } from './edit-mode-guard'
+import { shouldPromptForUnsavedChangesNavigation } from './edit-mode-guard'
 
-describe('shouldPromptForEditNavigation', () => {
+describe('shouldPromptForUnsavedChangesNavigation', () => {
   it('allows moving between prediction steps', () => {
     expect(
-      shouldPromptForEditNavigation({
-        editingSubmission: true,
+      shouldPromptForUnsavedChangesNavigation({
+        hasUnsavedChanges: true,
         currentPathname: '/predict/groups',
         destinationHref: '/predict/bracket',
       }),
     ).toBe(false)
   })
 
-  it('prompts when edit mode would be abandoned', () => {
+  it('prompts when leaving the predict flow with unsaved changes', () => {
     expect(
-      shouldPromptForEditNavigation({
-        editingSubmission: true,
+      shouldPromptForUnsavedChangesNavigation({
+        hasUnsavedChanges: true,
         currentPathname: '/predict/groups',
         destinationHref: '/pools/spain/dashboard',
       }),
     ).toBe(true)
 
     expect(
-      shouldPromptForEditNavigation({
-        editingSubmission: true,
+      shouldPromptForUnsavedChangesNavigation({
+        hasUnsavedChanges: true,
         currentPathname: '/predict/groups',
         destinationHref: '/matches',
       }),
@@ -32,18 +32,18 @@ describe('shouldPromptForEditNavigation', () => {
 
   it('prompts for absolute same-origin links outside the predict flow', () => {
     expect(
-      shouldPromptForEditNavigation({
-        editingSubmission: true,
+      shouldPromptForUnsavedChangesNavigation({
+        hasUnsavedChanges: true,
         currentPathname: '/predict/groups',
         destinationHref: 'http://localhost:3000/pools/spain/dashboard',
       }),
     ).toBe(true)
   })
 
-  it('does not prompt when not editing', () => {
+  it('does not prompt when there are no unsaved changes', () => {
     expect(
-      shouldPromptForEditNavigation({
-        editingSubmission: false,
+      shouldPromptForUnsavedChangesNavigation({
+        hasUnsavedChanges: false,
         currentPathname: '/predict/groups',
         destinationHref: '/matches',
       }),

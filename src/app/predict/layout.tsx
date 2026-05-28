@@ -18,7 +18,7 @@ import {
 import { Progress } from '@/components/ui/progress'
 import { useAuth } from '@/context/auth-context'
 import { usePredictions } from '@/context/predictions-context'
-import { shouldPromptForEditNavigation } from '@/lib/navigation/edit-mode-guard'
+import { shouldPromptForUnsavedChangesNavigation } from '@/lib/navigation/edit-mode-guard'
 import { predictSummaryHref } from '@/lib/navigation/predict-routes'
 import {
   clearPendingSubmit,
@@ -231,8 +231,8 @@ export default function PredictLayout({
 
       const href = anchor.href
       if (
-        !shouldPromptForEditNavigation({
-          editingSubmission,
+        !shouldPromptForUnsavedChangesNavigation({
+          hasUnsavedChanges: editingSubmission,
           currentPathname: pathname,
           destinationHref: href,
         })
@@ -259,8 +259,8 @@ export default function PredictLayout({
       const destinationHref = window.location.href
 
       if (
-        !shouldPromptForEditNavigation({
-          editingSubmission,
+        !shouldPromptForUnsavedChangesNavigation({
+          hasUnsavedChanges: editingSubmission,
           currentPathname: pathname,
           destinationHref,
         })
