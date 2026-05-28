@@ -159,12 +159,10 @@ function MiniStandings({
   )
 }
 
+// The navbar + sticky predict strip are the only sticky chrome above the
+// page content. Both the mobile-inline standings and the desktop sidebar
+// standings need to tuck under them, so the offset is the same for both.
 function useStickyOffsets() {
-  // Only the navbar and the standings block are sticky now. The group-selector
-  // pills scroll naturally with the page, so we don't need to measure them.
-  // On mobile the predict stepper is non-sticky too, so the standings tuck
-  // straight under the navbar; from `sm:` upward the stepper is sticky and we
-  // add its height.
   const [standingsOffset, setStandingsOffset] = useState(0)
   const [sidebarOffset, setSidebarOffset] = useState(0)
 
@@ -173,12 +171,10 @@ function useStickyOffsets() {
     const stepper = document.getElementById('predict-stepper')
     if (!navbar || !stepper) return
 
-    const smQuery = window.matchMedia('(min-width: 640px)')
-
     const measure = () => {
       const navH = navbar.offsetHeight
       const stepperH = stepper.offsetHeight
-      setStandingsOffset(smQuery.matches ? navH + stepperH : navH)
+      setStandingsOffset(navH + stepperH)
       setSidebarOffset(navH + stepperH)
     }
 
@@ -186,10 +182,8 @@ function useStickyOffsets() {
     const ro = new ResizeObserver(measure)
     ro.observe(navbar)
     ro.observe(stepper)
-    smQuery.addEventListener('change', measure)
     return () => {
       ro.disconnect()
-      smQuery.removeEventListener('change', measure)
     }
   }, [])
 
@@ -204,15 +198,12 @@ export default function GroupsPage() {
     tieBreakResolutions,
     setGroupPrediction,
     completedGroups,
-    submitted,
     predictionsLocked,
-    editingSubmission,
     autofillDemo,
     autofillGroupDemo,
     autofillMatchDemo,
     setTieBreakResolution,
   } = usePredictions()
-  const readOnlySubmitted = submitted && !editingSubmission
 
   const matches = getMatchesByGroup(selectedGroup)
   const groupComplete = completedGroups.includes(selectedGroup)
@@ -258,7 +249,7 @@ export default function GroupsPage() {
               <Button size="sm">Next: Best 3rds</Button>
             </Link>
           )}
-          {!predictionsLocked && !readOnlySubmitted && (
+          {!predictionsLocked && (
             <button
               onClick={() => autofillDemo()}
               className="text-xs font-medium text-pink-400 hover:text-pink-300 transition-colors flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-pink-500/20 hover:border-pink-500/40 hover:bg-pink-500/5"
@@ -269,8 +260,8 @@ export default function GroupsPage() {
         </div>
       </div>
 
-      {/* Group selector — scrolls with the page. The standings below are the
-          only sticky element on mobile, keeping the sticky surface minimal. */}
+      {/* Group selector — scrolls with the page so the sticky surface stays
+          minimal (navbar + predict strip + standings only). */}
       <div className="-mx-4 px-4 py-3 border-b border-border/30">
         <GroupSelector
           selectedGroup={selectedGroup}
@@ -280,7 +271,7 @@ export default function GroupsPage() {
       </div>
 
       {/* Inline standings on viewports without the right-side sidebar. Sticks
-          just under the global header (and the predict stepper, on `sm:`+). */}
+          just under the global header and the predict stepper. */}
       <div
         className="md:hidden sticky z-30 -mx-4 px-4 py-3 bg-background/95 backdrop-blur-sm border-b border-border/30 space-y-3"
         style={{ top: standingsOffset }}
@@ -295,7 +286,7 @@ export default function GroupsPage() {
             ties={unresolvedGroupTies}
             tieBreakResolutions={tieBreakResolutions}
             onResolve={setTieBreakResolution}
-            disabled={predictionsLocked || readOnlySubmitted}
+            disabled={predictionsLocked}
             compact
             collapsible
           />
@@ -315,7 +306,7 @@ export default function GroupsPage() {
                 </Badge>
               )}
             </div>
-            {!predictionsLocked && !readOnlySubmitted && (
+            {!predictionsLocked && (
               <button
                 onClick={() => autofillGroupDemo(selectedGroup)}
                 className="text-xs font-medium text-pink-400 hover:text-pink-300 transition-colors flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-pink-500/20 hover:border-pink-500/40 hover:bg-pink-500/5"
@@ -331,7 +322,7 @@ export default function GroupsPage() {
               match={match}
               prediction={groupPredictions[match.id]}
               onPredictionChange={setGroupPrediction}
-              disabled={predictionsLocked || readOnlySubmitted}
+              disabled={predictionsLocked}
               onAutofill={autofillMatchDemo}
             />
           ))}
@@ -383,7 +374,7 @@ export default function GroupsPage() {
                 ties={unresolvedGroupTies}
                 tieBreakResolutions={tieBreakResolutions}
                 onResolve={setTieBreakResolution}
-                disabled={predictionsLocked || readOnlySubmitted}
+                disabled={predictionsLocked}
                 compact
               />
             )}
