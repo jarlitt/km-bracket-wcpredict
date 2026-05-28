@@ -45,10 +45,6 @@ interface PredictionsContextType extends PredictionsState {
   setKnockoutPrediction: (matchId: string, winnerId: number) => void
   setTieBreakResolution: (key: string, teamOrder: number[]) => void
   submitPredictions: (knockoutMatchups?: Record<string, KnockoutMatchup>) => Promise<string | null>
-  /** @deprecated Removed in Task 10 — use `isDirty` + `discardUnsavedChanges` instead. */
-  startEditingSubmission: () => void
-  /** @deprecated Removed in Task 10 — use `discardUnsavedChanges` instead. */
-  cancelEditingSubmission: () => Promise<string | null>
   discardUnsavedChanges: () => void
   resetPredictions: () => void
   autofillDemo: () => void
@@ -62,8 +58,6 @@ interface PredictionsContextType extends PredictionsState {
   submitting: boolean
   dbLoaded: boolean
   predictionsLocked: boolean
-  /** @deprecated Removed in Task 10 — superseded by `isDirty`. */
-  editingSubmission: boolean
   isDirty: boolean
   submittedSnapshot: PredictionsState | null
 }
@@ -171,7 +165,6 @@ function ScopedPredictionsProvider({
   )
   const [submitting, setSubmitting] = useState(false)
   const [dbLoaded, setDbLoaded] = useState(false)
-  const [editingSubmission, setEditingSubmission] = useState(false)
   const [submittedSnapshot, setSubmittedSnapshot] = useState<PredictionsState | null>(() =>
     loadSnapshotFromStorage(userId, poolId),
   )
@@ -373,7 +366,6 @@ function ScopedPredictionsProvider({
       setState(nextState)
       setSubmittedSnapshot(snapshot)
       saveSnapshotToStorage(userId, poolId, snapshot)
-      setEditingSubmission(false)
       return null
     } finally {
       setSubmitting(false)
@@ -384,28 +376,6 @@ function ScopedPredictionsProvider({
     userId,
     buildCurrentKnockoutMatchups,
   ])
-
-  /** @deprecated Removed in Task 10 — use `isDirty` + `discardUnsavedChanges` instead. */
-  const startEditingSubmission = useCallback(() => {
-    setEditingSubmission(true)
-  }, [])
-
-  /** @deprecated Removed in Task 10 — use `discardUnsavedChanges` instead. */
-  const cancelEditingSubmission = useCallback(async (): Promise<string | null> => {
-    if (!poolId) return 'No active pool'
-    const dbData = await loadPredictions()
-    if (!dbData) return 'Failed to reload saved predictions'
-
-    setState({
-      groupPredictions: dbData.groupPredictions,
-      knockoutPredictions: dbData.knockoutPredictions,
-      knockoutMatchups: dbData.knockoutMatchups,
-      tieBreakResolutions: dbData.tieBreakResolutions,
-      submitted: dbData.submitted,
-    })
-    setEditingSubmission(false)
-    return null
-  }, [poolId])
 
   const discardUnsavedChanges = useCallback(() => {
     if (!submittedSnapshot) return
@@ -630,8 +600,6 @@ function ScopedPredictionsProvider({
       setKnockoutPrediction,
       setTieBreakResolution,
       submitPredictions,
-      startEditingSubmission,
-      cancelEditingSubmission,
       discardUnsavedChanges,
       resetPredictions,
       autofillDemo,
@@ -645,7 +613,6 @@ function ScopedPredictionsProvider({
       submitting,
       dbLoaded,
       predictionsLocked,
-      editingSubmission,
       isDirty,
       submittedSnapshot,
     }}>
