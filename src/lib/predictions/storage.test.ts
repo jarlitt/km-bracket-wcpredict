@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
+  ANON_DRAFT_STORAGE_KEY,
   ANON_SCOPE,
+  clearAnonDraft,
   defaultPredictionsState,
   predictionsStorageKey,
+  readAnonDraft,
   readPredictionsFromStorage,
+  writeAnonDraft,
   writePredictionsToStorage,
   type StorageLike,
   type PredictionsState,
@@ -165,5 +169,50 @@ describe('readPredictionsFromStorage', () => {
     )
 
     expect(readPredictionsFromStorage(storage, USER, POOL).knockoutMatchups).toEqual({})
+  })
+})
+
+describe('anon draft helpers', () => {
+  it('writes the anon draft under the dedicated draft key', () => {
+    const storage = new MemoryStorage()
+    writeAnonDraft(storage, sampleState())
+
+    expect(storage.has(ANON_DRAFT_STORAGE_KEY)).toBe(true)
+  })
+
+  it('reads back what was just written', () => {
+    const storage = new MemoryStorage()
+    writeAnonDraft(storage, sampleState())
+
+    const result = readAnonDraft(storage)
+    expect(result.groupPredictions).toEqual({ 1: { scoreA: 2, scoreB: 1 } })
+    expect(result.knockoutPredictions).toEqual({ 'r16-1': 7 })
+    expect(result.tieBreakResolutions).toEqual({ 'group:A:1,2': [2, 1] })
+  })
+
+  it('always returns submitted=false for anon drafts', () => {
+    const storage = new MemoryStorage()
+    writeAnonDraft(storage, { ...sampleState(), submitted: true })
+
+    expect(readAnonDraft(storage).submitted).toBe(false)
+  })
+
+  it('returns the default state when no draft is stored', () => {
+    expect(readAnonDraft(new MemoryStorage())).toEqual(defaultPredictionsState)
+  })
+
+  it('returns the default state when the stored draft is corrupt', () => {
+    const storage = new MemoryStorage()
+    storage.setItem(ANON_DRAFT_STORAGE_KEY, '{not-json')
+
+    expect(readAnonDraft(storage)).toEqual(defaultPredictionsState)
+  })
+
+  it('clears the draft', () => {
+    const storage = new MemoryStorage()
+    writeAnonDraft(storage, sampleState())
+    clearAnonDraft(storage)
+
+    expect(storage.has(ANON_DRAFT_STORAGE_KEY)).toBe(false)
   })
 })

@@ -23,10 +23,13 @@ import { usePools } from '@/context/pool-context'
 import { loadPredictions, submitPredictionsToDb } from '@/app/actions/predictions'
 import {
   defaultPredictionsState,
+  readAnonDraft,
   readPredictionsFromStorage,
+  writeAnonDraft,
   writePredictionsToStorage,
   type PredictionsState,
 } from '@/lib/predictions/storage'
+import { migrateAnonDraftToCountryPool } from '@/lib/predictions/anon-migration'
 import { hasCompleteScore } from '@/lib/predictions/completeness'
 import { isTournamentLocked } from '@/lib/matches/lock'
 import type { KnockoutMatchup } from '@/types'
@@ -60,18 +63,34 @@ function loadFromStorage(
   userId: string | null,
   poolId: string | null,
 ): PredictionsState {
-  if (!poolId) return defaultPredictionsState
   if (typeof window === 'undefined') return defaultPredictionsState
+
+  // Anonymous users persist a single pool-less draft so picks survive the
+  // sign-up/login → remount cycle (PredictionsProvider remounts on key change).
+  if (!userId) return readAnonDraft(window.localStorage)
+
+  if (!poolId) return defaultPredictionsState
+
+  // Authed user with a known pool — migrate any anon draft into their scope
+  // first so picks made before logging in are preserved on login (signup also
+  // migrates eagerly in auth-context, but login does not).
+  migrateAnonDraftToCountryPool(window.localStorage, userId, poolId)
   return readPredictionsFromStorage(window.localStorage, userId, poolId)
 }
 
 function saveToStorage(
   userId: string | null,
-  poolId: string,
+  poolId: string | null,
   state: PredictionsState,
 ) {
   if (typeof window === 'undefined') return
-  writePredictionsToStorage(window.localStorage, userId, poolId, state)
+
+  if (!userId) {
+    writeAnonDraft(window.localStorage, state)
+    return
+  }
+
+  if (poolId) writePredictionsToStorage(window.localStorage, userId, poolId, state)
 }
 
 /**
@@ -152,10 +171,11 @@ function ScopedPredictionsProvider({
   }, [userId, poolId])
 
   // Persist drafts to localStorage. Anonymous users save under the
-  // 'anon' scope so their picks carry over on signup (see loadFromStorage).
+  // 'anon:draft' scope so their picks carry over on signup/login (see
+  // loadFromStorage), authed users save under their user/pool scope.
   useEffect(() => {
     if (editingSubmission && state.submitted) return
-    if (poolId) saveToStorage(userId, poolId, state)
+    saveToStorage(userId, poolId, state)
   }, [state, userId, poolId, editingSubmission])
 
   const buildKnockoutMatchesForState = useCallback((snapshot: PredictionsState) => {

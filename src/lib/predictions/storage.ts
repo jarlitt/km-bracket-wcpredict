@@ -98,6 +98,39 @@ export function scopedPredictionsStorageKey(userId: string, poolId: string): str
   return `${STORAGE_PREFIX}:${userId}:${poolId}`
 }
 
+/**
+ * Read the single anonymous-user draft. Used while no user/pool is known yet
+ * so the picks survive a sign-up/login + remount cycle.
+ *
+ * `submitted` is forced to `false` — the anon scope can never represent a
+ * real submission.
+ */
+export function readAnonDraft(storage: StorageLike): PredictionsState {
+  const raw = safeGet(storage, ANON_DRAFT_STORAGE_KEY)
+  if (!raw) return defaultPredictionsState
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<PredictionsState>
+    return {
+      groupPredictions: parsed.groupPredictions ?? {},
+      knockoutPredictions: parsed.knockoutPredictions ?? {},
+      knockoutMatchups: parsed.knockoutMatchups ?? {},
+      tieBreakResolutions: parsed.tieBreakResolutions ?? {},
+      submitted: false,
+    }
+  } catch {
+    return defaultPredictionsState
+  }
+}
+
+export function writeAnonDraft(storage: StorageLike, state: PredictionsState): void {
+  safeSet(storage, ANON_DRAFT_STORAGE_KEY, JSON.stringify(state))
+}
+
+export function clearAnonDraft(storage: StorageLike): void {
+  safeRemove(storage, ANON_DRAFT_STORAGE_KEY)
+}
+
 export function legacyAnonPredictionKeys(storage: Storage): string[] {
   const keys: string[] = []
   for (let index = 0; index < storage.length; index++) {
