@@ -9,6 +9,7 @@ import { calculateGroupStandings } from '@/lib/standings/calculate-standings'
 import { determineBestThirdPlaceTeams } from '@/lib/standings/best-third'
 import { generateKnockoutBracket } from '@/lib/bracket/bracket-structure'
 import { resolveKnockoutMatches } from '@/lib/bracket/resolve-bracket'
+import { predictGroupsHref } from '@/lib/navigation/predict-routes'
 import Link from 'next/link'
 
 function BracketPageInner() {
@@ -120,7 +121,7 @@ function BracketPageInner() {
       {/* Inline bottom CTAs on desktop — duplicated by the mobile sticky bar
           below so we hide the inline version on small screens. */}
       <div className="hidden sm:flex gap-2 justify-between items-center">
-        <Link href={`${basePath}/thirds`}>
+        <Link href={predictGroupsHref('thirds')}>
           <Button variant="outline" size="sm">Back to Best 3rds</Button>
         </Link>
         {submitted && (
@@ -137,7 +138,7 @@ function BracketPageInner() {
         style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
       >
         <div className="flex gap-2">
-          <Link href={`${basePath}/thirds`} className="flex-1">
+          <Link href={predictGroupsHref('thirds')} className="flex-1">
             <Button variant="outline" className="w-full">&larr; Best 3rds</Button>
           </Link>
           {submitted && (
