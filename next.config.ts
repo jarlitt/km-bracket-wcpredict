@@ -21,6 +21,11 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        source: '/predict/thirds',
+        destination: '/predict/groups?group=thirds',
+        permanent: true,
+      },
+      {
         source: '/pools/:slug/predict',
         destination: '/predict/groups',
         permanent: true,
