@@ -25,10 +25,14 @@ import {
   defaultPredictionsState,
   readAnonDraft,
   readPredictionsFromStorage,
+  readSubmittedSnapshot,
   writeAnonDraft,
   writePredictionsToStorage,
+  writeSubmittedSnapshot,
+  clearSubmittedSnapshot,
   type PredictionsState,
 } from '@/lib/predictions/storage'
+import { computeIsDirty } from '@/lib/predictions/dirty'
 import { migrateAnonDraftToCountryPool } from '@/lib/predictions/anon-migration'
 import { hasCompleteScore } from '@/lib/predictions/completeness'
 import { isTournamentLocked } from '@/lib/matches/lock'
@@ -41,8 +45,11 @@ interface PredictionsContextType extends PredictionsState {
   setKnockoutPrediction: (matchId: string, winnerId: number) => void
   setTieBreakResolution: (key: string, teamOrder: number[]) => void
   submitPredictions: (knockoutMatchups?: Record<string, KnockoutMatchup>) => Promise<string | null>
+  /** @deprecated Removed in Task 10 — use `isDirty` + `discardUnsavedChanges` instead. */
   startEditingSubmission: () => void
+  /** @deprecated Removed in Task 10 — use `discardUnsavedChanges` instead. */
   cancelEditingSubmission: () => Promise<string | null>
+  discardUnsavedChanges: () => void
   resetPredictions: () => void
   autofillDemo: () => void
   autofillAllOneZero: () => void
@@ -55,7 +62,10 @@ interface PredictionsContextType extends PredictionsState {
   submitting: boolean
   dbLoaded: boolean
   predictionsLocked: boolean
+  /** @deprecated Removed in Task 10 — superseded by `isDirty`. */
   editingSubmission: boolean
+  isDirty: boolean
+  submittedSnapshot: PredictionsState | null
 }
 
 const PredictionsContext = createContext<PredictionsContextType | null>(null)
@@ -92,6 +102,34 @@ function saveToStorage(
   }
 
   if (poolId) writePredictionsToStorage(window.localStorage, userId, poolId, state)
+}
+
+function loadSnapshotFromStorage(
+  userId: string | null,
+  poolId: string | null,
+): PredictionsState | null {
+  if (typeof window === 'undefined') return null
+  if (!userId || !poolId) return null
+  return readSubmittedSnapshot(window.localStorage, userId, poolId)
+}
+
+function saveSnapshotToStorage(
+  userId: string | null,
+  poolId: string | null,
+  snapshot: PredictionsState,
+) {
+  if (typeof window === 'undefined') return
+  if (!userId || !poolId) return
+  writeSubmittedSnapshot(window.localStorage, userId, poolId, snapshot)
+}
+
+function clearSnapshotInStorage(
+  userId: string | null,
+  poolId: string | null,
+) {
+  if (typeof window === 'undefined') return
+  if (!userId || !poolId) return
+  clearSubmittedSnapshot(window.localStorage, userId, poolId)
 }
 
 /**
@@ -134,6 +172,9 @@ function ScopedPredictionsProvider({
   const [submitting, setSubmitting] = useState(false)
   const [dbLoaded, setDbLoaded] = useState(false)
   const [editingSubmission, setEditingSubmission] = useState(false)
+  const [submittedSnapshot, setSubmittedSnapshot] = useState<PredictionsState | null>(() =>
+    loadSnapshotFromStorage(userId, poolId),
+  )
 
   // Hydrate from DB. All setStates live inside the .then() callback so the
   // synchronous body of the effect never touches state.
@@ -147,6 +188,20 @@ function ScopedPredictionsProvider({
       if (!dbData) {
         setDbLoaded(true)
         return
+      }
+      if (dbData.submitted) {
+        const dbSnapshot: PredictionsState = {
+          groupPredictions: dbData.groupPredictions,
+          knockoutPredictions: dbData.knockoutPredictions,
+          knockoutMatchups: dbData.knockoutMatchups,
+          tieBreakResolutions: dbData.tieBreakResolutions,
+          submitted: true,
+        }
+        setSubmittedSnapshot(dbSnapshot)
+        saveSnapshotToStorage(userId, poolId, dbSnapshot)
+      } else {
+        setSubmittedSnapshot(null)
+        clearSnapshotInStorage(userId, poolId)
       }
       setState((prev) => ({
         groupPredictions:
@@ -175,9 +230,8 @@ function ScopedPredictionsProvider({
   // 'anon:draft' scope so their picks carry over on signup/login (see
   // loadFromStorage), authed users save under their user/pool scope.
   useEffect(() => {
-    if (editingSubmission && state.submitted) return
     saveToStorage(userId, poolId, state)
-  }, [state, userId, poolId, editingSubmission])
+  }, [state, userId, poolId])
 
   const buildKnockoutMatchesForState = useCallback((snapshot: PredictionsState) => {
     const allStandings: Record<string, ReturnType<typeof calculateGroupStandings>> = {}
@@ -310,7 +364,15 @@ function ScopedPredictionsProvider({
       if (!result.success) {
         return result.error ?? 'Failed to submit predictions'
       }
-      setState((prev) => ({ ...prev, knockoutMatchups: submittedMatchups, submitted: true }))
+      const nextState: PredictionsState = {
+        ...state,
+        knockoutMatchups: submittedMatchups,
+        submitted: true,
+      }
+      const snapshot: PredictionsState = structuredClone(nextState)
+      setState(nextState)
+      setSubmittedSnapshot(snapshot)
+      saveSnapshotToStorage(userId, poolId, snapshot)
       setEditingSubmission(false)
       return null
     } finally {
@@ -318,15 +380,17 @@ function ScopedPredictionsProvider({
     }
   }, [
     poolId,
-    state.groupPredictions,
-    state.knockoutPredictions,
+    state,
+    userId,
     buildCurrentKnockoutMatchups,
   ])
 
+  /** @deprecated Removed in Task 10 — use `isDirty` + `discardUnsavedChanges` instead. */
   const startEditingSubmission = useCallback(() => {
     setEditingSubmission(true)
   }, [])
 
+  /** @deprecated Removed in Task 10 — use `discardUnsavedChanges` instead. */
   const cancelEditingSubmission = useCallback(async (): Promise<string | null> => {
     if (!poolId) return 'No active pool'
     const dbData = await loadPredictions()
@@ -342,6 +406,11 @@ function ScopedPredictionsProvider({
     setEditingSubmission(false)
     return null
   }, [poolId])
+
+  const discardUnsavedChanges = useCallback(() => {
+    if (!submittedSnapshot) return
+    setState(structuredClone(submittedSnapshot))
+  }, [submittedSnapshot])
 
   const resetPredictions = useCallback(() => {
     setState(defaultPredictionsState)
@@ -551,6 +620,7 @@ function ScopedPredictionsProvider({
     (p) => hasCompleteScore(p.scoreA, p.scoreB),
   ).length
   const totalKnockoutPredictions = Object.keys(state.knockoutPredictions).length
+  const isDirty = computeIsDirty(state, submittedSnapshot)
   const predictionsLocked = isTournamentLocked()
 
   return (
@@ -562,6 +632,7 @@ function ScopedPredictionsProvider({
       submitPredictions,
       startEditingSubmission,
       cancelEditingSubmission,
+      discardUnsavedChanges,
       resetPredictions,
       autofillDemo,
       autofillAllOneZero,
@@ -575,6 +646,8 @@ function ScopedPredictionsProvider({
       dbLoaded,
       predictionsLocked,
       editingSubmission,
+      isDirty,
+      submittedSnapshot,
     }}>
       {children}
     </PredictionsContext>
