@@ -47,6 +47,7 @@ interface PredictionsContextType extends PredictionsState {
   autofillDemo: () => void
   autofillAllOneZero: () => void
   autofillGroupDemo: (groupId: string) => void
+  autofillMatchDemo: (matchId: number) => void
   autofillKnockoutDemo: () => void
   completedGroups: string[]
   totalGroupPredictions: number
@@ -424,6 +425,36 @@ function ScopedPredictionsProvider({
     })
   }, [])
 
+  // Single-match version of the autofill heuristic above. Keeps the same
+  // strength-vs-strength scoring shape so a "dice this match" tap reads as
+  // plausibly as the whole-group autofill.
+  const autofillMatchDemo = useCallback((matchId: number) => {
+    const match = GROUP_MATCHES.find(m => m.id === matchId)
+    if (!match) return
+
+    const teams = getTeamsByGroup(match.groupId)
+    const aIdx = teams.findIndex(t => t.id === match.teamAId)
+    const bIdx = teams.findIndex(t => t.id === match.teamBId)
+    const aStrength = 3 - aIdx
+    const bStrength = 3 - bIdx
+    const r = Math.random()
+
+    let scoreA: number
+    let scoreB: number
+    if (r < 0.45) {
+      scoreA = Math.min(aStrength, 4)
+      scoreB = Math.max(0, scoreA - 1 - Math.floor(r * 3))
+    } else if (r < 0.7) {
+      scoreA = Math.floor(r * 3)
+      scoreB = scoreA
+    } else {
+      scoreB = Math.min(bStrength, 3)
+      scoreA = Math.max(0, scoreB - 1 - Math.floor(r * 2))
+    }
+
+    setGroupPrediction(matchId, scoreA, scoreB)
+  }, [setGroupPrediction])
+
   const autofillKnockoutDemo = useCallback(() => {
     const gp = state.groupPredictions
     if (Object.keys(gp).length < 72) return
@@ -535,6 +566,7 @@ function ScopedPredictionsProvider({
       autofillDemo,
       autofillAllOneZero,
       autofillGroupDemo,
+      autofillMatchDemo,
       autofillKnockoutDemo,
       completedGroups,
       totalGroupPredictions,

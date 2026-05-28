@@ -7,7 +7,10 @@ const MONTHS: Record<string, number> = {
   Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
 }
 
-function utcToLocal(date: string, time: string): { date: string; time: string } {
+function utcToLocal(
+  date: string,
+  time: string,
+): { date: string; time: string; weekday: string } {
   const [day, mon] = date.split(' ')
   const [h, m] = time.split(':').map(Number)
   const utc = new Date(Date.UTC(2026, MONTHS[mon], parseInt(day), h, m))
@@ -15,6 +18,7 @@ function utcToLocal(date: string, time: string): { date: string; time: string } 
   return {
     date: utc.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
     time: utc.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false }),
+    weekday: utc.toLocaleDateString(undefined, { weekday: 'long' }),
   }
 }
 
@@ -44,6 +48,6 @@ export function useLocalKickoff(date?: string, time?: string) {
   )
 
   if (!date || !time) return null
-  if (!isClient) return { date, time }
+  if (!isClient) return { date, time, weekday: '' }
   return utcToLocal(date, time)
 }

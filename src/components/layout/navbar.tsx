@@ -39,14 +39,14 @@ export function Navbar() {
   useEffect(() => {
     if (!mobileOpen) return
 
+    // Locking `body` (not `html`) preserves `position: sticky` on the header;
+    // locking the documentElement breaks sticky in some browsers, which made
+    // the menu invisible when opened after the user scrolled the page.
     const originalBodyOverflow = document.body.style.overflow
-    const originalRootOverflow = document.documentElement.style.overflow
     document.body.style.overflow = 'hidden'
-    document.documentElement.style.overflow = 'hidden'
 
     return () => {
       document.body.style.overflow = originalBodyOverflow
-      document.documentElement.style.overflow = originalRootOverflow
     }
   }, [mobileOpen])
 
@@ -153,95 +153,102 @@ export function Navbar() {
         </div>
       </div>
 
-      {mobileOpen && (
-        <div className="border-t border-border/40 bg-background/95 backdrop-blur-xl md:hidden">
-          <div className="flex flex-col gap-1 px-4 py-3">
-            {navLinks.map((link) => {
-              const isActive = isNavLinkActive(link.href, pathname)
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileOpen(false)}
-                  className={cn(
-                    buttonVariants({ variant: 'ghost', size: 'sm' }),
-                    'justify-start',
-                    isActive ? 'bg-muted text-foreground' : 'text-muted-foreground'
-                  )}
-                >
-                  {link.label}
-                </Link>
-              )
-            })}
-            <LiveScoreLink
-              active={isNavLinkActive(LIVE_SCORE_HREF, pathname)}
-              variant="mobile"
-              onClick={() => setMobileOpen(false)}
-            />
-
-
-            {isAdmin && (
-              <div className="mt-2 border-t border-border/40 pt-3">
-                <p className="px-3 text-xs font-bold text-red-400 mb-2 flex items-center gap-1.5">
-                  <span className="w-4 h-4 rounded-full bg-red-600 text-white text-[9px] font-bold flex items-center justify-center">D</span>
-                  Demo Controls
-                </p>
-                <DemoControlsList
-                  onAutofillGroups={() => { autofillDemo(); setMobileOpen(false) }}
-                  onAutofillAllOneZero={() => { autofillAllOneZero(); setMobileOpen(false) }}
-                  onAutofillKnockout={() => { autofillKnockoutDemo(); setMobileOpen(false) }}
-                  onReset={() => { resetPredictions(); setMobileOpen(false) }}
-                />
-              </div>
-            )}
-
-            {user ? (
-              <div className="mt-2 border-t border-border/40 pt-3">
-                <p className="px-3 text-sm text-muted-foreground mb-2">{user.displayName}</p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => { logout(); setMobileOpen(false) }}
-                  className="justify-start text-muted-foreground gap-1.5 w-full"
-                >
-                  <LogOut className="size-3.5" />
-                  Log out
-                </Button>
-              </div>
-            ) : (
-              <div className="mt-2 border-t border-border/40 pt-3 space-y-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMobileOpen(false)
-                    openAuth('login')
-                  }}
-                  className={cn(
-                    buttonVariants({ variant: 'ghost', size: 'sm' }),
-                    'justify-start text-muted-foreground w-full',
-                  )}
-                >
-                  Log in
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMobileOpen(false)
-                    openAuth('signup')
-                  }}
-                  className={cn(
-                    buttonVariants({ size: 'sm' }),
-                    'justify-start w-full',
-                  )}
-                >
-                  Sign up
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </header>
+    {/* Mobile menu rendered as a fixed overlay anchored to the viewport so it
+        stays visible no matter how far the page has been scrolled. Sitting it
+        outside the sticky header also avoids interaction with body scroll
+        locking. */}
+    {mobileOpen && (
+      <div
+        id="mobile-nav-menu"
+        className="fixed inset-x-0 top-14 z-50 max-h-[calc(100vh-3.5rem)] overflow-y-auto border-t border-border/40 bg-background/95 backdrop-blur-xl md:hidden"
+      >
+        <div className="flex flex-col gap-1 px-4 py-3">
+          {navLinks.map((link) => {
+            const isActive = isNavLinkActive(link.href, pathname)
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setMobileOpen(false)}
+                className={cn(
+                  buttonVariants({ variant: 'ghost', size: 'sm' }),
+                  'justify-start',
+                  isActive ? 'bg-muted text-foreground' : 'text-muted-foreground'
+                )}
+              >
+                {link.label}
+              </Link>
+            )
+          })}
+          <LiveScoreLink
+            active={isNavLinkActive(LIVE_SCORE_HREF, pathname)}
+            variant="mobile"
+            onClick={() => setMobileOpen(false)}
+          />
+
+
+          {isAdmin && (
+            <div className="mt-2 border-t border-border/40 pt-3">
+              <p className="px-3 text-xs font-bold text-red-400 mb-2 flex items-center gap-1.5">
+                <span className="w-4 h-4 rounded-full bg-red-600 text-white text-[9px] font-bold flex items-center justify-center">D</span>
+                Demo Controls
+              </p>
+              <DemoControlsList
+                onAutofillGroups={() => { autofillDemo(); setMobileOpen(false) }}
+                onAutofillAllOneZero={() => { autofillAllOneZero(); setMobileOpen(false) }}
+                onAutofillKnockout={() => { autofillKnockoutDemo(); setMobileOpen(false) }}
+                onReset={() => { resetPredictions(); setMobileOpen(false) }}
+              />
+            </div>
+          )}
+
+          {user ? (
+            <div className="mt-2 border-t border-border/40 pt-3">
+              <p className="px-3 text-sm text-muted-foreground mb-2">{user.displayName}</p>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { logout(); setMobileOpen(false) }}
+                className="justify-start text-muted-foreground gap-1.5 w-full"
+              >
+                <LogOut className="size-3.5" />
+                Log out
+              </Button>
+            </div>
+          ) : (
+            <div className="mt-2 border-t border-border/40 pt-3 space-y-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileOpen(false)
+                  openAuth('login')
+                }}
+                className={cn(
+                  buttonVariants({ variant: 'ghost', size: 'sm' }),
+                  'justify-start text-muted-foreground w-full',
+                )}
+              >
+                Log in
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileOpen(false)
+                  openAuth('signup')
+                }}
+                className={cn(
+                  buttonVariants({ size: 'sm' }),
+                  'justify-start w-full',
+                )}
+              >
+                Sign up
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    )}
     {authOpen && (
       <AuthModal
         open={authOpen}
@@ -400,7 +407,7 @@ function LiveScoreLink({
         buttonVariants({ variant: 'ghost', size: 'sm' }),
         'gap-1.5 border border-red-500/30 text-red-400 hover:bg-red-500/15 hover:text-red-300',
         active && 'bg-red-500/20 text-red-300',
-        variant === 'desktop' ? 'ml-1' : 'justify-start w-full',
+        variant === 'desktop' ? 'ml-1' : 'justify-start self-start',
       )}
       aria-current={active ? 'page' : undefined}
     >

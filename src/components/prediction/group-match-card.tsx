@@ -11,6 +11,7 @@ interface GroupMatchCardProps {
   prediction?: { scoreA?: number; scoreB?: number }
   onPredictionChange: (matchId: number, scoreA: number | undefined, scoreB: number | undefined) => void
   disabled?: boolean
+  onAutofill?: (matchId: number) => void
 }
 
 const MIN_SCORE = 0
@@ -111,10 +112,11 @@ function TeamRow({
   )
 }
 
-export function GroupMatchCard({ match, prediction, onPredictionChange, disabled }: GroupMatchCardProps) {
+export function GroupMatchCard({ match, prediction, onPredictionChange, disabled, onAutofill }: GroupMatchCardProps) {
   const teamA = getTeamById(match.teamAId)
   const teamB = getTeamById(match.teamBId)
   const kickoff = useLocalKickoff(match.date, match.time)
+  const showHeader = Boolean(kickoff) || (!disabled && onAutofill)
 
   const handleScoreChange = (side: 'A' | 'B', value: number | undefined) => {
     if (side === 'A') {
@@ -126,10 +128,33 @@ export function GroupMatchCard({ match, prediction, onPredictionChange, disabled
 
   return (
     <div className="rounded-xl bg-card/50 border border-border/50 hover:border-border transition-colors overflow-hidden">
-      {kickoff && (
-        <div className="flex items-center justify-center gap-2 px-4 py-1.5 bg-card/40 border-b border-border/30">
-          <span className="text-[11px] text-muted-foreground">{kickoff.date}</span>
-          <span className="text-[11px] font-medium text-muted-foreground/80">{kickoff.time}</span>
+      {showHeader && (
+        <div className="flex items-center justify-between gap-2 px-4 py-1.5 bg-card/40 border-b border-border/30">
+          {kickoff ? (
+            <div className="flex items-baseline gap-1.5 min-w-0 text-[11px]">
+              {kickoff.weekday && (
+                <span className="font-medium text-foreground/80 truncate">
+                  {kickoff.weekday}
+                </span>
+              )}
+              <span className="text-muted-foreground">{kickoff.date}</span>
+              <span className="font-medium text-muted-foreground/80">{kickoff.time}</span>
+            </div>
+          ) : (
+            <span />
+          )}
+          {!disabled && onAutofill && (
+            <button
+              type="button"
+              onClick={() => onAutofill(match.id)}
+              aria-label="Auto predict this match"
+              className="flex shrink-0 items-center gap-1 rounded-md border border-pink-500/20 px-1.5 py-0.5 text-[10px] font-medium text-pink-400 transition-colors hover:border-pink-500/40 hover:bg-pink-500/5 hover:text-pink-300"
+            >
+              <span className="dice-shake">🎲</span>
+              <span className="hidden sm:inline">Auto predict</span>
+              <span className="sm:hidden">Auto</span>
+            </button>
+          )}
         </div>
       )}
       <div className="space-y-3 p-4 sm:p-5">

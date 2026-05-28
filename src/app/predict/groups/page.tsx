@@ -160,36 +160,45 @@ function MiniStandings({
 }
 
 function useStickyOffsets() {
-  const groupSelectorRef = useRef<HTMLDivElement>(null)
-  const [stepperOffset, setStepperOffset] = useState(0)
+  // Only the navbar and the standings block are sticky now. The group-selector
+  // pills scroll naturally with the page, so we don't need to measure them.
+  // On mobile the predict stepper is non-sticky too, so the standings tuck
+  // straight under the navbar; from `sm:` upward the stepper is sticky and we
+  // add its height.
+  const [standingsOffset, setStandingsOffset] = useState(0)
   const [sidebarOffset, setSidebarOffset] = useState(0)
 
   useEffect(() => {
     const navbar = document.querySelector('header')
     const stepper = document.getElementById('predict-stepper')
-    const groupSelector = groupSelectorRef.current
     if (!navbar || !stepper) return
 
+    const smQuery = window.matchMedia('(min-width: 640px)')
+
     const measure = () => {
-      const base = navbar.offsetHeight + stepper.offsetHeight
-      setStepperOffset(base)
-      setSidebarOffset(base + (groupSelector?.offsetHeight ?? 0))
+      const navH = navbar.offsetHeight
+      const stepperH = stepper.offsetHeight
+      setStandingsOffset(smQuery.matches ? navH + stepperH : navH)
+      setSidebarOffset(navH + stepperH)
     }
 
     measure()
     const ro = new ResizeObserver(measure)
     ro.observe(navbar)
     ro.observe(stepper)
-    if (groupSelector) ro.observe(groupSelector)
-    return () => ro.disconnect()
+    smQuery.addEventListener('change', measure)
+    return () => {
+      ro.disconnect()
+      smQuery.removeEventListener('change', measure)
+    }
   }, [])
 
-  return { groupSelectorRef, stepperOffset, sidebarOffset }
+  return { standingsOffset, sidebarOffset }
 }
 
 export default function GroupsPage() {
   const [selectedGroup, setSelectedGroup] = useState<string>('A')
-  const { groupSelectorRef, stepperOffset, sidebarOffset } = useStickyOffsets()
+  const { standingsOffset, sidebarOffset } = useStickyOffsets()
   const {
     groupPredictions,
     tieBreakResolutions,
@@ -200,6 +209,7 @@ export default function GroupsPage() {
     editingSubmission,
     autofillDemo,
     autofillGroupDemo,
+    autofillMatchDemo,
     setTieBreakResolution,
   } = usePredictions()
   const readOnlySubmitted = submitted && !editingSubmission
@@ -259,39 +269,37 @@ export default function GroupsPage() {
         </div>
       </div>
 
-      {/* Group selector (+ mini standings on mobile only). Sticky on
-          tablet/desktop only — `static` ignores the inline `top` so it scrolls
-          naturally on mobile. */}
-      <div
-        ref={groupSelectorRef}
-        className="static sm:sticky z-30 -mx-4 px-4 py-3 bg-background/95 backdrop-blur-sm border-b border-border/30 space-y-3"
-        style={{ top: stepperOffset }}
-      >
+      {/* Group selector — scrolls with the page. The standings below are the
+          only sticky element on mobile, keeping the sticky surface minimal. */}
+      <div className="-mx-4 px-4 py-3 border-b border-border/30">
         <GroupSelector
           selectedGroup={selectedGroup}
           onSelect={setSelectedGroup}
           completedGroups={completedGroups}
         />
-        {/* Mobile-only inline standings */}
-        <div className="lg:hidden">
-          <MiniStandings
-            groupId={selectedGroup}
-            groupPredictions={groupPredictions}
+      </div>
+
+      {/* Inline standings on viewports without the right-side sidebar. Sticks
+          just under the global header (and the predict stepper, on `sm:`+). */}
+      <div
+        className="md:hidden sticky z-30 -mx-4 px-4 py-3 bg-background/95 backdrop-blur-sm border-b border-border/30 space-y-3"
+        style={{ top: standingsOffset }}
+      >
+        <MiniStandings
+          groupId={selectedGroup}
+          groupPredictions={groupPredictions}
+          tieBreakResolutions={tieBreakResolutions}
+        />
+        {groupComplete && unresolvedGroupTies.length > 0 && (
+          <TieBreakResolver
+            ties={unresolvedGroupTies}
             tieBreakResolutions={tieBreakResolutions}
+            onResolve={setTieBreakResolution}
+            disabled={predictionsLocked || readOnlySubmitted}
+            compact
+            collapsible
           />
-          {groupComplete && unresolvedGroupTies.length > 0 && (
-            <div className="mt-3">
-              <TieBreakResolver
-                ties={unresolvedGroupTies}
-                tieBreakResolutions={tieBreakResolutions}
-                onResolve={setTieBreakResolution}
-                disabled={predictionsLocked || readOnlySubmitted}
-                compact
-                collapsible
-              />
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Two-column layout on desktop */}
@@ -324,49 +332,46 @@ export default function GroupsPage() {
               prediction={groupPredictions[match.id]}
               onPredictionChange={setGroupPrediction}
               disabled={predictionsLocked || readOnlySubmitted}
+              onAutofill={autofillMatchDemo}
             />
           ))}
 
           {/* Inline prev/next is duplicated by the mobile bottom bar — hide
-              the inline buttons on mobile to avoid two sets of controls. */}
-          <div className="flex flex-col sm:flex-row gap-2 sm:justify-between sm:items-center pt-2">
-            <div className="hidden sm:flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 sm:flex-none"
-                onClick={() => {
-                  const idx = GROUPS.indexOf(selectedGroup as GroupId)
-                  if (idx > 0) setSelectedGroup(GROUPS[idx - 1])
-                }}
-                disabled={selectedGroup === 'A'}
-              >
-                &larr; Group {GROUPS[GROUPS.indexOf(selectedGroup as GroupId) - 1] ?? ''}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 sm:flex-none"
-                onClick={() => {
-                  const idx = GROUPS.indexOf(selectedGroup as GroupId)
-                  if (idx < GROUPS.length - 1) setSelectedGroup(GROUPS[idx + 1])
-                }}
-                disabled={selectedGroup === 'L'}
-              >
-                Group {GROUPS[GROUPS.indexOf(selectedGroup as GroupId) + 1] ?? ''} &rarr;
-              </Button>
-            </div>
-
-            {allComplete && (
-              <Link href="/predict/thirds" className="w-full sm:w-auto">
-                <Button className="w-full sm:w-auto">Continue to Best 3rds</Button>
-              </Link>
-            )}
+              the inline buttons on mobile to avoid two sets of controls.
+              Navigation to "Best 3rds" lives in the stepper (desktop) and in
+              the mobile bottom bar (group L only), so we no longer render a
+              "Continue to Best 3rds" CTA on every group. */}
+          <div className="hidden sm:flex gap-2 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 sm:flex-none"
+              onClick={() => {
+                const idx = GROUPS.indexOf(selectedGroup as GroupId)
+                if (idx > 0) setSelectedGroup(GROUPS[idx - 1])
+              }}
+              disabled={selectedGroup === 'A'}
+            >
+              &larr; Group {GROUPS[GROUPS.indexOf(selectedGroup as GroupId) - 1] ?? ''}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 sm:flex-none"
+              onClick={() => {
+                const idx = GROUPS.indexOf(selectedGroup as GroupId)
+                if (idx < GROUPS.length - 1) setSelectedGroup(GROUPS[idx + 1])
+              }}
+              disabled={selectedGroup === 'L'}
+            >
+              Group {GROUPS[GROUPS.indexOf(selectedGroup as GroupId) + 1] ?? ''} &rarr;
+            </Button>
           </div>
         </div>
 
-        {/* Right: sticky standings sidebar (desktop only, 1/3 width) */}
-        <div className="hidden lg:block w-1/3 shrink-0">
+        {/* Right: sticky standings sidebar — shown from `md:` upward so tablets
+            get the same two-column layout as desktop. */}
+        <div className="hidden md:block w-1/3 shrink-0">
           <div className="sticky space-y-3" style={{ top: sidebarOffset }}>
             <MiniStandings
               groupId={selectedGroup}
@@ -387,32 +392,36 @@ export default function GroupsPage() {
       </div>
 
       {/* Mobile-only sticky bottom bar with prev/next group nav. iOS safe-area
-          aware so the buttons clear the home indicator. */}
+          aware so the buttons clear the home indicator. Group A hides the
+          "previous" button entirely; Group L swaps "next" for the Best 3rds
+          link so the user has somewhere to go after the final group. */}
       <div
         className="sm:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border/40 bg-background/95 backdrop-blur-sm px-4 pt-3"
         style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
       >
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={() => {
-              if (prevGroup) setSelectedGroup(prevGroup)
-            }}
-            disabled={!prevGroup}
-          >
-            &larr; Group {prevGroup ?? ''}
-          </Button>
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={() => {
-              if (nextGroup) setSelectedGroup(nextGroup)
-            }}
-            disabled={!nextGroup}
-          >
-            Group {nextGroup ?? ''} &rarr;
-          </Button>
+          {prevGroup && (
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setSelectedGroup(prevGroup)}
+            >
+              &larr; Group {prevGroup}
+            </Button>
+          )}
+          {nextGroup ? (
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setSelectedGroup(nextGroup)}
+            >
+              Group {nextGroup} &rarr;
+            </Button>
+          ) : (
+            <Link href="/predict/thirds" className="flex-1">
+              <Button className="w-full">Best 3rds &rarr;</Button>
+            </Link>
+          )}
         </div>
       </div>
     </div>
