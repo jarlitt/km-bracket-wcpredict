@@ -1,9 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { TieBreakerRulesHelp } from '@/components/prediction/tie-breaker-rules-help'
 import { cn } from '@/lib/utils'
 import { usePredictions } from '@/context/predictions-context'
 import { GROUPS } from '@/lib/data/teams'
@@ -14,8 +12,8 @@ import {
   findQualificationRelevantThirdPlaceTies,
   findUnresolvedThirdPlaceTies,
 } from '@/lib/standings/best-third'
-import Link from 'next/link'
 import { TeamFlag } from '@/components/team-flag'
+import { Button } from '@/components/ui/button'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 
 const TIE_GROUP_STYLES = [
@@ -92,18 +90,14 @@ function moveTeam(order: number[], index: number, direction: -1 | 1): number[] {
   return next
 }
 
-export default function ThirdsPage() {
-  const basePath = '/predict'
+export function BestThirdsView() {
   const {
     groupPredictions,
     tieBreakResolutions,
     setTieBreakResolution,
     completedGroups,
     predictionsLocked,
-    submitted,
-    editingSubmission,
   } = usePredictions()
-  const readOnlySubmitted = submitted && !editingSubmission
 
   const allStandings = useMemo(() => {
     const standings: Record<string, ReturnType<typeof calculateGroupStandings>> = {}
@@ -156,43 +150,12 @@ export default function ThirdsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Best 3rds</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          The eight best third-place teams advance to the knockout stage. Resolve only best-third ties here.
-        </p>
-        <div className="flex gap-2 mt-3">
-          <Link href={`${basePath}/groups`}>
-            <Button variant="outline" size="sm">Edit Scores</Button>
-          </Link>
-          {allComplete && (
-            <Link href={`${basePath}/bracket`}>
-              <Button size="sm">Next: Bracket</Button>
-            </Link>
-          )}
-        </div>
-      </div>
-
       {!allComplete && (
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
           <p className="text-sm text-amber-300">
             Complete all group predictions to see accurate standings.
             You have {completedGroups.length}/12 groups complete.
           </p>
-          <Link href={`${basePath}/groups`}>
-            <Button variant="outline" size="sm" className="mt-2">Go to Group Predictions</Button>
-          </Link>
-        </div>
-      )}
-
-      {allComplete && qualificationRelevantTieKeys.size > 0 && (
-        <div className="flex items-start justify-between gap-3 rounded-xl border border-blue-500/30 bg-blue-500/10 p-4">
-          <p className="text-sm text-blue-100">
-            {readOnlySubmitted
-              ? 'Some third-place teams are tied around the qualification cutoff. Edit your submission to adjust who advances.'
-              : 'Some third-place teams are tied around the qualification cutoff. Use the arrows to choose who advances. Bracket slots are assigned from FIFA\u2019s matchup table.'}
-          </p>
-          <TieBreakerRulesHelp type="third-place" />
         </div>
       )}
 
@@ -244,7 +207,7 @@ export default function ThirdsPage() {
                   : []
                 const tieIndex = tieOrder.indexOf(entry.standing.team.id)
                 const isQualificationRelevantTie = !!tie && qualificationRelevantTieKeys.has(tie.key)
-                const canMoveTie = isQualificationRelevantTie && !predictionsLocked && !readOnlySubmitted
+                const canMoveTie = isQualificationRelevantTie && !predictionsLocked
                 const inTie = isQualificationRelevantTie
                 const isTieStart = inTie && tieIndex === 0
                 const isTieEnd = inTie && tieIndex === tieOrder.length - 1
@@ -340,17 +303,6 @@ export default function ThirdsPage() {
             <span className="w-2 h-2 rounded-full bg-muted" /> Eliminated
           </span>
         </div>
-      </div>
-
-      <div className="flex gap-2 justify-between items-center">
-        <Link href={`${basePath}/groups`}>
-          <Button variant="outline" size="sm">Edit Scores</Button>
-        </Link>
-        {allComplete && (
-          <Link href={`${basePath}/bracket`}>
-            <Button size="sm">Next: Bracket</Button>
-          </Link>
-        )}
       </div>
     </div>
   )

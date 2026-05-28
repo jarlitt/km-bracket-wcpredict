@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -15,25 +15,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Progress } from '@/components/ui/progress'
 import { useAuth } from '@/context/auth-context'
 import { usePredictions } from '@/context/predictions-context'
-import { shouldPromptForEditNavigation } from '@/lib/navigation/edit-mode-guard'
+import { PredictProgressBar } from '@/components/prediction/predict-progress-bar'
+import { shouldPromptForUnsavedChangesNavigation } from '@/lib/navigation/unsaved-changes-guard'
 import { predictSummaryHref } from '@/lib/navigation/predict-routes'
 import {
   clearPendingSubmit,
   readPendingSubmit,
   writePendingSubmit,
 } from '@/lib/predictions/pending-submit'
-
 const TOTAL_GROUP_MATCHES = 72
 const TOTAL_KNOCKOUT_MATCHES = 32
 
-const STEP_DEFS = [
-  { suffix: '/predict/groups', label: 'Group Matches', step: 1 },
-  { suffix: '/predict/thirds', label: 'Best 3rds', step: 2 },
-  { suffix: '/predict/bracket', label: 'Knockout Bracket', step: 3 },
-  { suffix: '/predict/summary', label: 'Summary', step: 4 },
+const STEPS = [
+  { href: '/predict/groups', label: 'Groups' },
+  { href: '/predict/bracket', label: 'Bracket' },
+  { href: '/predict/summary', label: 'Summary' },
 ] as const
 
 export default function PredictLayout({
@@ -49,62 +47,44 @@ export default function PredictLayout({
     totalKnockoutPredictions,
     submitted,
     predictionsLocked,
-    editingSubmission,
+    isDirty,
     submitPredictions,
-    startEditingSubmission,
-    cancelEditingSubmission,
+    discardUnsavedChanges,
     dbLoaded,
+    submittedSnapshot,
+    currentBracketEntryMatchups,
+    knockoutPredictions,
   } = usePredictions()
-  const [updating, setUpdating] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+  const [submitting, setSubmitting] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
-  const [cancelling, setCancelling] = useState(false)
   const [pendingSubmitAfterAuth, setPendingSubmitAfterAuth] = useState(() =>
     readPendingSubmit(),
   )
   const [pendingNavigationHref, setPendingNavigationHref] = useState<
     string | null
   >(null)
-  const [discardingNavigation, setDiscardingNavigation] = useState(false)
-  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false)
   const attemptedAuthSubmitRef = useRef(false)
   const currentHrefRef = useRef<string | null>(null)
-  const groupProgress = Math.round(
-    (totalGroupPredictions / TOTAL_GROUP_MATCHES) * 100,
-  )
 
-  const steps = STEP_DEFS.map((s) => ({
-    ...s,
-    href: s.suffix,
-  }))
-
-  const groupsDone = totalGroupPredictions >= TOTAL_GROUP_MATCHES
-  const bracketDone = totalKnockoutPredictions >= TOTAL_KNOCKOUT_MATCHES
+  const allComplete =
+    totalGroupPredictions >= TOTAL_GROUP_MATCHES &&
+    totalKnockoutPredictions >= TOTAL_KNOCKOUT_MATCHES
   const summaryHref = predictSummaryHref()
+  const hasSomethingToSubmit = isDirty || !submitted
+  const submitButtonDisabled =
+    submitting || !allComplete || !hasSomethingToSubmit
+  const submitButtonLabel = submitted
+    ? submitting
+      ? 'Updating...'
+      : 'Update submission'
+    : submitting
+      ? 'Submitting...'
+      : 'Submit predictions'
 
-  const isStepCompleted = (suffix: string): boolean => {
-    if (submitted && !editingSubmission) return true
-    if (suffix === '/predict/groups') return groupsDone
-    if (suffix === '/predict/thirds') return groupsDone
-    if (suffix === '/predict/bracket') return bracketDone
-    if (suffix === '/predict/summary') return submitted && !editingSubmission
-    return false
-  }
-
-  const handleUpdateSubmission = async () => {
-    setUpdating(true)
-    const error = await submitPredictions()
-    setUpdating(false)
-
-    if (error) {
-      toast.error(error)
-      return
-    }
-
-    toast.success('Submission updated.')
-    router.push(summaryHref)
-  }
-
-  const handleSubmitFromBanner = useCallback(async () => {
+  const handleSubmit = useCallback(async () => {
+    if (!hasSomethingToSubmit) return
     if (totalGroupPredictions < TOTAL_GROUP_MATCHES) {
       toast.error(
         `Complete all group predictions first (${totalGroupPredictions}/${TOTAL_GROUP_MATCHES})`,
@@ -117,7 +97,6 @@ export default function PredictLayout({
       )
       return
     }
-
     if (!user) {
       attemptedAuthSubmitRef.current = false
       writePendingSubmit()
@@ -126,54 +105,51 @@ export default function PredictLayout({
       return
     }
 
-    setUpdating(true)
+    const wasFirstSubmit = !submitted
+    setSubmitting(true)
     const error = await submitPredictions()
-    setUpdating(false)
+    setSubmitting(false)
 
     if (error) {
       toast.error(error)
       return
     }
 
-    toast.success('Predictions submitted. You can edit them until kickoff.')
+    toast.success(
+      wasFirstSubmit
+        ? 'Predictions submitted. You can edit them until kickoff.'
+        : 'Submission updated.',
+    )
     router.push(summaryHref)
-  }, [totalGroupPredictions, totalKnockoutPredictions, user, submitPredictions, router, summaryHref])
+  }, [
+    hasSomethingToSubmit,
+    totalGroupPredictions,
+    totalKnockoutPredictions,
+    user,
+    submitted,
+    submitPredictions,
+    router,
+    summaryHref,
+  ])
 
-  const handleCancelEditing = () => {
-    setConfirmCancelOpen(true)
-  }
-
-  const handleConfirmCancelEditing = async () => {
-    setCancelling(true)
-    const error = await cancelEditingSubmission()
-    setCancelling(false)
-    setConfirmCancelOpen(false)
-
-    if (error) {
-      toast.error(error)
-      return
-    }
-
-    toast.info('Edits discarded.')
-  }
-
-  const handleConfirmNavigation = async () => {
+  const handleConfirmNavigation = () => {
     if (!pendingNavigationHref) return
 
-    setDiscardingNavigation(true)
-    const error = await cancelEditingSubmission()
-    setDiscardingNavigation(false)
-
-    if (error) {
-      toast.error(error)
-      return
-    }
+    discardUnsavedChanges()
 
     const destinationHref = pendingNavigationHref
     setPendingNavigationHref(null)
 
-    if (destinationHref.startsWith(window.location.origin)) {
-      router.push(destinationHref.slice(window.location.origin.length))
+    let destinationOrigin: string | null = null
+    try {
+      destinationOrigin = new URL(destinationHref).origin
+    } catch {
+      // fall through to assign
+    }
+
+    if (destinationOrigin === window.location.origin) {
+      const url = new URL(destinationHref)
+      router.push(`${url.pathname}${url.search}${url.hash}`)
       return
     }
 
@@ -186,19 +162,14 @@ export default function PredictLayout({
     if (authLoading || !user) return
     if (!dbLoaded) return
     if (predictionsLocked) return
-    if (
-      totalGroupPredictions < TOTAL_GROUP_MATCHES ||
-      totalKnockoutPredictions < TOTAL_KNOCKOUT_MATCHES
-    ) {
-      return
-    }
+    if (!allComplete) return
 
     attemptedAuthSubmitRef.current = true
     void Promise.resolve().then(() => {
       clearPendingSubmit()
       setPendingSubmitAfterAuth(false)
       setAuthOpen(false)
-      handleSubmitFromBanner()
+      handleSubmit()
     })
   }, [
     pendingSubmitAfterAuth,
@@ -206,17 +177,44 @@ export default function PredictLayout({
     user,
     dbLoaded,
     predictionsLocked,
-    totalGroupPredictions,
-    totalKnockoutPredictions,
-    handleSubmitFromBanner,
+    allComplete,
+    handleSubmit,
   ])
 
   useEffect(() => {
     currentHrefRef.current = window.location.href
   }, [pathname])
 
+  // Derive which R32 matches have unresolved bracket conflicts: teams differ
+  // from submitted snapshot AND the user hasn't re-picked a winner yet.
+  // Fully reactive — clears per-match as the user picks, no manual dismiss.
+  const unresolvedBracketConflicts = useMemo(() => {
+    if (!submitted || !currentBracketEntryMatchups || !submittedSnapshot) {
+      return 0
+    }
+    const submittedR32 = Object.fromEntries(
+      Object.entries(submittedSnapshot.knockoutMatchups).filter(([k]) =>
+        k.startsWith('R32-'),
+      ),
+    )
+    let count = 0
+    for (const [matchId, current] of Object.entries(currentBracketEntryMatchups)) {
+      const baseline = submittedR32[matchId]
+      if (!baseline) continue
+      const teamsChanged =
+        baseline.teamAId !== current.teamAId ||
+        baseline.teamBId !== current.teamBId
+      if (teamsChanged && !(matchId in knockoutPredictions)) {
+        count++
+      }
+    }
+    return count
+  }, [submitted, currentBracketEntryMatchups, submittedSnapshot, knockoutPredictions])
+
+  const bracketChanged = unresolvedBracketConflicts > 0
+
   useEffect(() => {
-    if (!editingSubmission) return
+    if (!isDirty) return
 
     const handleClick = (event: MouseEvent) => {
       if (event.defaultPrevented || event.button !== 0) return
@@ -231,8 +229,8 @@ export default function PredictLayout({
 
       const href = anchor.href
       if (
-        !shouldPromptForEditNavigation({
-          editingSubmission,
+        !shouldPromptForUnsavedChangesNavigation({
+          hasUnsavedChanges: isDirty,
           currentPathname: pathname,
           destinationHref: href,
         })
@@ -250,17 +248,17 @@ export default function PredictLayout({
     return () => {
       document.removeEventListener('click', handleClick, { capture: true })
     }
-  }, [editingSubmission, pathname])
+  }, [isDirty, pathname])
 
   useEffect(() => {
-    if (!editingSubmission) return
+    if (!isDirty) return
 
     const handlePopState = () => {
       const destinationHref = window.location.href
 
       if (
-        !shouldPromptForEditNavigation({
-          editingSubmission,
+        !shouldPromptForUnsavedChangesNavigation({
+          hasUnsavedChanges: isDirty,
           currentPathname: pathname,
           destinationHref,
         })
@@ -279,10 +277,10 @@ export default function PredictLayout({
     return () => {
       window.removeEventListener('popstate', handlePopState)
     }
-  }, [editingSubmission, pathname])
+  }, [isDirty, pathname])
 
   useEffect(() => {
-    if (!editingSubmission) return
+    if (!isDirty) return
 
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault()
@@ -293,150 +291,109 @@ export default function PredictLayout({
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
     }
-  }, [editingSubmission])
+  }, [isDirty])
+
+  const showSubmitInStrip = hasSomethingToSubmit && !predictionsLocked
+  const showDirtyBanner = isDirty && !predictionsLocked
 
   return (
     <div>
-      <div id="predict-stepper" className="static sm:sticky sm:top-14 z-40 border-b border-border/30 bg-background/95 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 py-2.5 space-y-2">
-          <div className="flex items-center gap-1 sm:gap-2">
-            {steps.map((step, i) => {
-              const isActive = pathname.startsWith(step.href)
-              const isCompleted = isStepCompleted(step.suffix)
-              const nextCompleted =
-                i < steps.length - 1
-                  ? isStepCompleted(steps[i + 1].suffix)
-                  : false
+      <div
+        id="predict-stepper"
+        className="sticky top-14 z-40 border-b border-border/30 bg-background/95 backdrop-blur-sm"
+      >
+        <div className="max-w-7xl mx-auto px-4 py-2 space-y-2">
+          <nav
+            aria-label="Predict navigation"
+            className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide"
+          >
+            {STEPS.map((step) => {
+              const isActive =
+                pathname === step.href || pathname.startsWith(`${step.href}/`)
+              const showBadge =
+                step.href === '/predict/bracket' && bracketChanged
               return (
-                <div
-                  key={step.href}
-                  className="flex items-center gap-1 sm:gap-2 flex-1"
-                >
+                <div key={step.href} className="relative">
                   <Link
                     href={step.href}
+                    aria-current={isActive ? 'page' : undefined}
                     className={cn(
-                      'flex items-center gap-1.5 rounded-md px-1.5 py-1 text-[11px] font-medium transition-colors whitespace-nowrap sm:px-2 sm:text-xs',
-                      isActive && 'bg-muted/70 text-foreground',
-                      !isActive && isCompleted && 'text-emerald-400',
-                      !isActive &&
-                        !isCompleted &&
-                        'text-muted-foreground hover:text-foreground',
+                      'relative flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors',
+                      isActive
+                        ? 'bg-card text-foreground border border-border/80 shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-card/60',
                     )}
                   >
-                    <span
-                      className={cn(
-                        'flex size-4 shrink-0 items-center justify-center rounded-full text-[9px] font-semibold sm:size-5 sm:text-[10px]',
-                        isActive &&
-                          !isCompleted &&
-                          'bg-foreground/10 text-foreground',
-                        isActive &&
-                          isCompleted &&
-                          'bg-emerald-500/15 text-emerald-400',
-                        !isActive &&
-                          isCompleted &&
-                          'bg-emerald-500/15 text-emerald-400',
-                        !isActive &&
-                          !isCompleted &&
-                          'bg-muted/60 text-muted-foreground',
-                      )}
-                    >
-                      {isCompleted ? '✓' : step.step}
-                    </span>
-                    <span className="hidden sm:inline">{step.label}</span>
+                    {step.label}
+                    {showBadge && (
+                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-black leading-none">
+                        !
+                      </span>
+                    )}
                   </Link>
-                  {i < steps.length - 1 && (
-                    <div
-                      className={cn(
-                        'flex-1 h-px opacity-60',
-                        isCompleted && nextCompleted
-                          ? 'bg-emerald-500/50'
-                          : 'bg-border',
-                      )}
-                    />
+                  {showBadge && (
+                    <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 z-50 pointer-events-none">
+                      <div className="relative bg-amber-500/90 text-black text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">
+                        <div className="absolute left-1/2 -translate-x-1/2 -top-1 w-2 h-2 bg-amber-500/90 rotate-45" />
+                        {unresolvedBracketConflicts === 1
+                          ? '1 bracket match needs a new pick'
+                          : `${unresolvedBracketConflicts} bracket matches need new picks`}
+                      </div>
+                    </div>
                   )}
                 </div>
               )
             })}
+          </nav>
+          <div className="flex items-center gap-3">
+            <PredictProgressBar
+              groupCount={mounted ? totalGroupPredictions : 0}
+              knockoutCount={mounted ? totalKnockoutPredictions : 0}
+              className="flex-1 min-w-0"
+            />
+            {showSubmitInStrip && (
+              <Button
+                size="sm"
+                onClick={() => void handleSubmit()}
+                disabled={submitButtonDisabled}
+                className={cn(
+                  'shrink-0 bg-emerald-600 hover:bg-emerald-700',
+                  submitButtonDisabled &&
+                    'bg-emerald-600/40 hover:bg-emerald-600/40',
+                )}
+              >
+                {submitButtonLabel}
+              </Button>
+            )}
           </div>
-          {pathname.endsWith('/predict/groups') && (
-            <div className="mt-2 flex items-center gap-3">
-              <Progress value={groupProgress} className="flex-1 h-2 [&_[data-slot=progress-indicator]]:bg-emerald-500" />
-              <span className="text-xs text-emerald-400 whitespace-nowrap">
-                {totalGroupPredictions}/{TOTAL_GROUP_MATCHES} matches
-              </span>
-            </div>
-          )}
-          {!predictionsLocked && (
-            <div
-              className={cn(
-                'flex flex-wrap items-center gap-2 rounded-lg border p-2',
-                editingSubmission
-                  ? 'border-amber-500/30 bg-amber-500/10'
-                  : submitted
-                    ? 'border-emerald-500/20 bg-emerald-500/5'
-                    : 'border-border/40 bg-card/30',
-              )}
-            >
-              <div className="mr-auto space-y-0.5">
-                <p
-                  className={cn(
-                  'text-xs',
-                  editingSubmission
-                      ? 'text-amber-300'
-                      : submitted
-                        ? 'text-emerald-300'
-                        : 'text-muted-foreground',
-                  )}
-                >
-                  {submitted
-                    ? editingSubmission
-                      ? 'Editing submitted predictions. Update or cancel before leaving.'
-                      : 'Submitted. You can edit until kickoff.'
-                    : `Groups ${totalGroupPredictions}/${TOTAL_GROUP_MATCHES} · Knockout ${totalKnockoutPredictions}/${TOTAL_KNOCKOUT_MATCHES}`}
-                </p>
-              </div>
-              {!submitted ? (
-                <Button
-                  size="sm"
-                  onClick={() => void handleSubmitFromBanner()}
-                  disabled={updating}
-                  className="bg-emerald-600 hover:bg-emerald-700"
-                >
-                  {updating ? 'Submitting...' : 'Submit predictions'}
-                </Button>
-              ) : editingSubmission ? (
-                <>
-                  <Button
-                    size="sm"
-                    onClick={() => void handleUpdateSubmission()}
-                    disabled={updating || cancelling}
-                    className="bg-emerald-600 hover:bg-emerald-700"
-                  >
-                    {updating ? 'Updating...' : 'Update submission'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => void handleCancelEditing()}
-                    disabled={updating || cancelling}
-                  >
-                    {cancelling ? 'Cancelling...' : 'Cancel'}
-                  </Button>
-                </>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={startEditingSubmission}
-                >
-                  Edit predictions
-                </Button>
-              )}
-            </div>
-          )}
         </div>
       </div>
-      <div className="max-w-7xl mx-auto px-4 py-6">{children}</div>
+
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        {showDirtyBanner && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4"
+          >
+            <p className="text-sm text-amber-300">
+              You have unsaved changes.{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  discardUnsavedChanges()
+                  toast.info('Edits discarded.')
+                }}
+                className="underline underline-offset-2 hover:text-amber-200 transition-colors"
+              >
+                Discard
+              </button>
+            </p>
+          </div>
+        )}
+        {children}
+      </div>
+
       {authOpen && (
         <AuthModal
           open={authOpen}
@@ -451,10 +408,11 @@ export default function PredictLayout({
           returnTo="/predict/bracket"
         />
       )}
+
       <Dialog
         open={pendingNavigationHref !== null}
         onOpenChange={(open) => {
-          if (!open && !discardingNavigation) {
+          if (!open) {
             setPendingNavigationHref(null)
           }
         }}
@@ -463,59 +421,20 @@ export default function PredictLayout({
           <DialogHeader>
             <DialogTitle>Discard edits?</DialogTitle>
             <DialogDescription>
-              You are editing submitted predictions. If you leave now, your
-              changes will be discarded and your saved submission will stay as
-              it was.
+              You have unsaved changes to your submitted predictions. If you
+              leave now, your changes will be discarded and your saved
+              submission will stay as it was.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button
               variant="outline"
               onClick={() => setPendingNavigationHref(null)}
-              disabled={discardingNavigation}
             >
               Keep editing
             </Button>
-            <Button
-              variant="destructive"
-              onClick={() => void handleConfirmNavigation()}
-              disabled={discardingNavigation}
-            >
-              {discardingNavigation ? 'Discarding...' : 'Discard and leave'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Dialog
-        open={confirmCancelOpen}
-        onOpenChange={(open) => {
-          if (!open && !cancelling) {
-            setConfirmCancelOpen(false)
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Discard edits?</DialogTitle>
-            <DialogDescription>
-              Your changes will be discarded and your saved submission will stay
-              as it was.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setConfirmCancelOpen(false)}
-              disabled={cancelling}
-            >
-              Keep editing
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => void handleConfirmCancelEditing()}
-              disabled={cancelling}
-            >
-              {cancelling ? 'Discarding...' : 'Discard edits'}
+            <Button variant="destructive" onClick={handleConfirmNavigation}>
+              Discard and leave
             </Button>
           </DialogFooter>
         </DialogContent>

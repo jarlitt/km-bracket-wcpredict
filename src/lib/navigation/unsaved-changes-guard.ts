@@ -1,5 +1,5 @@
-interface EditNavigationGuardInput {
-  editingSubmission: boolean
+interface UnsavedChangesNavigationGuardInput {
+  hasUnsavedChanges: boolean
   currentPathname: string
   destinationHref: string
 }
@@ -14,12 +14,12 @@ function pathnameFromHref(href: string): string | null {
   }
 }
 
-export function shouldPromptForEditNavigation({
-  editingSubmission,
+export function shouldPromptForUnsavedChangesNavigation({
+  hasUnsavedChanges,
   currentPathname,
   destinationHref,
-}: EditNavigationGuardInput): boolean {
-  if (!editingSubmission) return false
+}: UnsavedChangesNavigationGuardInput): boolean {
+  if (!hasUnsavedChanges) return false
 
   if (!PREDICT_PATH_PATTERN.test(currentPathname)) return false
 

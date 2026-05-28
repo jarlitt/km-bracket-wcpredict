@@ -595,24 +595,39 @@ function getThirdPlaceMapping(qualifiedGroups: string[]): Record<string, string>
   return mapping;
 }
 
-const LATER_ROUNDS: { id: string; round: KnockoutMatch['round']; position: number; label: string; feedsFrom: [string, string]; usesLoser?: boolean }[] = [
-  { id: 'R16-1', round: 'R16', position: 1,  label: 'W(R32-1) vs W(R32-2)',   feedsFrom: ['R32-1', 'R32-2'] },
-  { id: 'R16-2', round: 'R16', position: 2,  label: 'W(R32-3) vs W(R32-4)',   feedsFrom: ['R32-3', 'R32-4'] },
-  { id: 'R16-3', round: 'R16', position: 3,  label: 'W(R32-5) vs W(R32-6)',   feedsFrom: ['R32-5', 'R32-6'] },
-  { id: 'R16-4', round: 'R16', position: 4,  label: 'W(R32-7) vs W(R32-8)',   feedsFrom: ['R32-7', 'R32-8'] },
-  { id: 'R16-5', round: 'R16', position: 5,  label: 'W(R32-9) vs W(R32-10)',  feedsFrom: ['R32-9', 'R32-10'] },
-  { id: 'R16-6', round: 'R16', position: 6,  label: 'W(R32-11) vs W(R32-12)', feedsFrom: ['R32-11', 'R32-12'] },
-  { id: 'R16-7', round: 'R16', position: 7,  label: 'W(R32-13) vs W(R32-14)', feedsFrom: ['R32-13', 'R32-14'] },
-  { id: 'R16-8', round: 'R16', position: 8,  label: 'W(R32-15) vs W(R32-16)', feedsFrom: ['R32-15', 'R32-16'] },
-  { id: 'QF-1',  round: 'QF',  position: 1,  label: 'W(R16-1) vs W(R16-2)',   feedsFrom: ['R16-1', 'R16-2'] },
-  { id: 'QF-2',  round: 'QF',  position: 2,  label: 'W(R16-3) vs W(R16-4)',   feedsFrom: ['R16-3', 'R16-4'] },
-  { id: 'QF-3',  round: 'QF',  position: 3,  label: 'W(R16-5) vs W(R16-6)',   feedsFrom: ['R16-5', 'R16-6'] },
-  { id: 'QF-4',  round: 'QF',  position: 4,  label: 'W(R16-7) vs W(R16-8)',   feedsFrom: ['R16-7', 'R16-8'] },
-  { id: 'SF-1',  round: 'SF',  position: 1,  label: 'W(QF-1) vs W(QF-2)',     feedsFrom: ['QF-1', 'QF-2'] },
-  { id: 'SF-2',  round: 'SF',  position: 2,  label: 'W(QF-3) vs W(QF-4)',     feedsFrom: ['QF-3', 'QF-4'] },
-  { id: '3RD',   round: '3RD', position: 1,  label: 'L(SF-1) vs L(SF-2)',     feedsFrom: ['SF-1', 'SF-2'], usesLoser: true },
-  { id: 'F',     round: 'F',   position: 1,  label: 'W(SF-1) vs W(SF-2)',     feedsFrom: ['SF-1', 'SF-2'] },
+const LATER_ROUNDS: { id: string; round: KnockoutMatch['round']; position: number; feedsFrom: [string, string]; usesLoser?: boolean }[] = [
+  { id: 'R16-1', round: 'R16', position: 1,  feedsFrom: ['R32-1', 'R32-2'] },
+  { id: 'R16-2', round: 'R16', position: 2,  feedsFrom: ['R32-3', 'R32-4'] },
+  { id: 'R16-3', round: 'R16', position: 3,  feedsFrom: ['R32-5', 'R32-6'] },
+  { id: 'R16-4', round: 'R16', position: 4,  feedsFrom: ['R32-7', 'R32-8'] },
+  { id: 'R16-5', round: 'R16', position: 5,  feedsFrom: ['R32-9', 'R32-10'] },
+  { id: 'R16-6', round: 'R16', position: 6,  feedsFrom: ['R32-11', 'R32-12'] },
+  { id: 'R16-7', round: 'R16', position: 7,  feedsFrom: ['R32-13', 'R32-14'] },
+  { id: 'R16-8', round: 'R16', position: 8,  feedsFrom: ['R32-15', 'R32-16'] },
+  { id: 'QF-1',  round: 'QF',  position: 1,  feedsFrom: ['R16-1', 'R16-2'] },
+  { id: 'QF-2',  round: 'QF',  position: 2,  feedsFrom: ['R16-3', 'R16-4'] },
+  { id: 'QF-3',  round: 'QF',  position: 3,  feedsFrom: ['R16-5', 'R16-6'] },
+  { id: 'QF-4',  round: 'QF',  position: 4,  feedsFrom: ['R16-7', 'R16-8'] },
+  { id: 'SF-1',  round: 'SF',  position: 1,  feedsFrom: ['QF-1', 'QF-2'] },
+  { id: 'SF-2',  round: 'SF',  position: 2,  feedsFrom: ['QF-3', 'QF-4'] },
+  { id: '3RD',   round: '3RD', position: 1,  feedsFrom: ['SF-1', 'SF-2'], usesLoser: true },
+  { id: 'F',     round: 'F',   position: 1,  feedsFrom: ['SF-1', 'SF-2'] },
 ];
+
+// Seed text shown next to each not-yet-resolved knockout slot. Winners advance
+// through every round, so R16/QF/SF reference the feeding match number on its
+// own (e.g. "M74"). The final and third-place match both draw from the same
+// two semifinals, so they keep an explicit W/L marker to disambiguate which
+// outcome fills the slot ("W M101" vs "L M101").
+function feedsFromLabel(round: (typeof LATER_ROUNDS)[number]): string {
+  const prefix = round.usesLoser ? 'L ' : 'W ';
+  return round.feedsFrom
+    .map((id) => {
+      const matchNumber = MATCH_SCHEDULE[id]?.matchNumber;
+      return matchNumber ? `${prefix}M${matchNumber}` : id;
+    })
+    .join(' vs ');
+}
 
 export function generateKnockoutBracket(
   allGroupStandings: Record<string, TeamStanding[]>,
@@ -662,7 +677,7 @@ export function generateKnockoutBracket(
       position: round.position,
       teamAId: null,
       teamBId: null,
-      label: round.label,
+      label: feedsFromLabel(round),
       date: sched?.date,
       time: sched?.time,
       matchNumber: sched?.matchNumber,

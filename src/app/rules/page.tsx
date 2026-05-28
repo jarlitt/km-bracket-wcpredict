@@ -98,7 +98,7 @@ export default function RulesPage() {
               </div>
               <Separator className="my-4" />
               <p className="text-sm text-muted-foreground">
-                <strong>Maximum per group:</strong> 9 points. With 12 groups,
+                <strong>Maximum per group: </strong> 9 points. With 12 groups,
                 that&apos;s up to 108 bonus points total.
               </p>
             </CardContent>

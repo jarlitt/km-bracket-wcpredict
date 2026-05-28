@@ -12,7 +12,12 @@ interface BracketViewProps {
   predictions: Record<string, number>
   onPickWinner: (matchId: string, winnerId: number) => void
   disabled?: boolean
-  highlightMissing?: Set<string>
+  /**
+   * Match ids whose resolved teams differ from the last-submitted bracket.
+   * Renders an amber ring around those cards so the user can see at a glance
+   * which matchups have shifted since their last submission.
+   */
+  highlightChanged?: Set<string>
 }
 
 function useIsMobile(breakpoint = 768) {
@@ -107,7 +112,7 @@ function MatchCard({
       <div className={cn(
         'rounded-lg border bg-card/40 overflow-hidden transition-colors',
         highlight
-          ? 'border-red-500 ring-1 ring-red-500/40'
+          ? 'border-amber-400 ring-1 ring-amber-400/40'
           : 'border-border/40',
       )}>
         <TeamSlot
@@ -156,7 +161,7 @@ function RoundColumn({
   onPickWinner,
   disabled,
   colIndex,
-  highlightMissing,
+  highlightChanged,
   header,
 }: {
   matches: KnockoutMatch[]
@@ -165,7 +170,7 @@ function RoundColumn({
   onPickWinner: (matchId: string, winnerId: number) => void
   disabled?: boolean
   colIndex: number
-  highlightMissing?: Set<string>
+  highlightChanged?: Set<string>
   header?: string
 }) {
   const layout = getRoundLayout(level)
@@ -191,7 +196,7 @@ function RoundColumn({
             winnerId={predictions[match.id] ?? null}
             onPickWinner={onPickWinner}
             disabled={disabled}
-            highlight={highlightMissing?.has(match.id)}
+            highlight={highlightChanged?.has(match.id)}
           />
         ))}
       </div>
@@ -206,7 +211,7 @@ function MobileRoundColumn({
   onPickWinner,
   disabled,
   colIndex,
-  highlightMissing,
+  highlightChanged,
 }: {
   matches: KnockoutMatch[]
   level: number
@@ -214,7 +219,7 @@ function MobileRoundColumn({
   onPickWinner: (matchId: string, winnerId: number) => void
   disabled?: boolean
   colIndex: number
-  highlightMissing?: Set<string>
+  highlightChanged?: Set<string>
 }) {
   const layout = getRoundLayout(level)
 
@@ -235,7 +240,7 @@ function MobileRoundColumn({
             onPickWinner={onPickWinner}
             disabled={disabled}
             wide
-            highlight={highlightMissing?.has(match.id)}
+            highlight={highlightChanged?.has(match.id)}
           />
         ))}
       </div>
@@ -251,7 +256,7 @@ const MOBILE_TABS = [
   { label: 'Final', short: 'Final' },
 ]
 
-export function BracketView({ matches, predictions, onPickWinner, disabled, highlightMissing }: BracketViewProps) {
+export function BracketView({ matches, predictions, onPickWinner, disabled, highlightChanged }: BracketViewProps) {
   const isMobile = useIsMobile()
   const scrollRef = useRef<HTMLDivElement>(null)
   const [activeTab, setActiveTab] = useState(0)
@@ -320,7 +325,7 @@ export function BracketView({ matches, predictions, onPickWinner, disabled, high
     return () => container.removeEventListener('scroll', onScroll)
   }, [isMobile])
 
-  const sharedProps = { predictions, onPickWinner, disabled, highlightMissing }
+  const sharedProps = { predictions, onPickWinner, disabled, highlightChanged }
 
   if (isMobile) {
     return (
@@ -354,12 +359,12 @@ export function BracketView({ matches, predictions, onPickWinner, disabled, high
             <div data-col="4" className="shrink-0">
               <div style={{ paddingTop: `${getRoundLayout(4).paddingTop}rem` }}>
                 {finalMatch && (
-                  <MatchCard match={finalMatch} winnerId={predictions[finalMatch.id] ?? null} onPickWinner={onPickWinner} disabled={disabled} wide highlight={highlightMissing?.has(finalMatch.id)} />
+                  <MatchCard match={finalMatch} winnerId={predictions[finalMatch.id] ?? null} onPickWinner={onPickWinner} disabled={disabled} wide highlight={highlightChanged?.has(finalMatch.id)} />
                 )}
                 {thirdPlaceMatch && (
                   <div className="mt-4 pt-3 border-t border-border/20">
                     <p className="text-[9px] text-muted-foreground/60 mb-1">3rd Place</p>
-                    <MatchCard match={thirdPlaceMatch} winnerId={predictions[thirdPlaceMatch.id] ?? null} onPickWinner={onPickWinner} disabled={disabled} wide highlight={highlightMissing?.has(thirdPlaceMatch.id)} />
+                    <MatchCard match={thirdPlaceMatch} winnerId={predictions[thirdPlaceMatch.id] ?? null} onPickWinner={onPickWinner} disabled={disabled} wide highlight={highlightChanged?.has(thirdPlaceMatch.id)} />
                   </div>
                 )}
               </div>
@@ -391,7 +396,7 @@ export function BracketView({ matches, predictions, onPickWinner, disabled, high
                 winnerId={predictions[finalMatch.id] ?? null}
                 onPickWinner={onPickWinner}
                 disabled={disabled}
-                highlight={highlightMissing?.has(finalMatch.id)}
+                highlight={highlightChanged?.has(finalMatch.id)}
               />
             )}
             {thirdPlaceMatch && (
@@ -402,7 +407,7 @@ export function BracketView({ matches, predictions, onPickWinner, disabled, high
                   winnerId={predictions[thirdPlaceMatch.id] ?? null}
                   onPickWinner={onPickWinner}
                   disabled={disabled}
-                  highlight={highlightMissing?.has(thirdPlaceMatch.id)}
+                  highlight={highlightChanged?.has(thirdPlaceMatch.id)}
                 />
               </div>
             )}

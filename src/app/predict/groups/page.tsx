@@ -1,14 +1,23 @@
 'use client'
 
-import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
+import { Suspense, useState, useRef, useEffect, useMemo, useCallback } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { GroupMatchCard } from '@/components/prediction/group-match-card'
 import { TieBreakResolver } from '@/components/prediction/tie-break-resolver'
+import { TieBreakerRulesHelp } from '@/components/prediction/tie-breaker-rules-help'
+import { BestThirdsView } from '@/components/prediction/best-thirds-view'
 import { usePredictions } from '@/context/predictions-context'
 import { GROUPS } from '@/lib/data/teams'
 import { getMatchesByGroup } from '@/lib/data/matches'
 import { calculateGroupStandings, findUnresolvedGroupTies } from '@/lib/standings/calculate-standings'
+import { findQualificationRelevantThirdPlaceTies } from '@/lib/standings/best-third'
+import {
+  predictGroupsHref,
+  resolveSelectedGroup,
+  type PredictGroupSelection,
+} from '@/lib/navigation/predict-routes'
 import { cn } from '@/lib/utils'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
@@ -16,12 +25,12 @@ import { TeamFlag } from '@/components/team-flag'
 import type { GroupId } from '@/types'
 
 function GroupSelector({
-  selectedGroup,
+  selection,
   onSelect,
   completedGroups,
 }: {
-  selectedGroup: string
-  onSelect: (g: string) => void
+  selection: PredictGroupSelection
+  onSelect: (s: PredictGroupSelection) => void
   completedGroups: string[]
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -52,24 +61,15 @@ function GroupSelector({
   }
 
   return (
-    <div className="relative flex items-center gap-1">
-      {canScrollLeft && (
-        <button
-          onClick={() => scroll('left')}
-          className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-card border border-border/50 text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </button>
-      )}
-
+    <div className="relative">
       <div
         ref={scrollRef}
-        className="flex gap-1.5 overflow-x-auto scrollbar-hide flex-1"
+        className="flex gap-1.5 overflow-x-auto scrollbar-hide"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {GROUPS.map(group => {
           const isComplete = completedGroups.includes(group)
-          const isSelected = selectedGroup === group
+          const isSelected = selection === group
           return (
             <button
               key={group}
@@ -85,16 +85,58 @@ function GroupSelector({
             </button>
           )
         })}
+
+        {/* Best 3rds tab — visually separated from the group pills by a divider
+            so it reads as a distinct view, not another group. Stays neutral
+            (never emerald) since its tie-breakers can be optional. */}
+        <div className="ml-2 pl-2 border-l border-border/50 flex items-center shrink-0">
+          <button
+            onClick={() => onSelect('thirds')}
+            className={cn(
+              'h-9 px-3 rounded-lg text-sm font-bold transition-all shrink-0',
+              selection === 'thirds'
+                ? 'bg-primary text-primary-foreground ring-2 ring-primary'
+                : 'bg-card/50 text-muted-foreground hover:bg-card hover:text-foreground border border-border/50',
+            )}
+          >
+            3rds
+          </button>
+        </div>
       </div>
 
-      {canScrollRight && (
+      <div
+        className={cn(
+          'pointer-events-none absolute inset-y-0 left-0 flex items-center pr-6 pl-1 transition-opacity duration-200',
+          'bg-linear-to-r from-background via-background/80 to-transparent backdrop-blur-sm mask-[linear-gradient(to_right,black_60%,transparent)]',
+          canScrollLeft ? 'opacity-100' : 'opacity-0',
+        )}
+      >
+        <button
+          onClick={() => scroll('left')}
+          aria-label="Scroll groups left"
+          tabIndex={canScrollLeft ? 0 : -1}
+          className="pointer-events-auto shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-card/80 border border-border/50 text-muted-foreground hover:text-foreground backdrop-blur-md transition-colors"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div
+        className={cn(
+          'pointer-events-none absolute inset-y-0 right-0 flex items-center justify-end pl-6 pr-1 transition-opacity duration-200',
+          'bg-linear-to-l from-background via-background/80 to-transparent backdrop-blur-sm mask-[linear-gradient(to_left,black_60%,transparent)]',
+          canScrollRight ? 'opacity-100' : 'opacity-0',
+        )}
+      >
         <button
           onClick={() => scroll('right')}
-          className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-card border border-border/50 text-muted-foreground hover:text-foreground transition-colors"
+          aria-label="Scroll groups right"
+          tabIndex={canScrollRight ? 0 : -1}
+          className="pointer-events-auto shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-card/80 border border-border/50 text-muted-foreground hover:text-foreground backdrop-blur-md transition-colors"
         >
           <ChevronRight className="w-4 h-4" />
         </button>
-      )}
+      </div>
     </div>
   )
 }
@@ -160,11 +202,6 @@ function MiniStandings({
 }
 
 function useStickyOffsets() {
-  // Only the navbar and the standings block are sticky now. The group-selector
-  // pills scroll naturally with the page, so we don't need to measure them.
-  // On mobile the predict stepper is non-sticky too, so the standings tuck
-  // straight under the navbar; from `sm:` upward the stepper is sticky and we
-  // add its height.
   const [standingsOffset, setStandingsOffset] = useState(0)
   const [sidebarOffset, setSidebarOffset] = useState(0)
 
@@ -173,12 +210,10 @@ function useStickyOffsets() {
     const stepper = document.getElementById('predict-stepper')
     if (!navbar || !stepper) return
 
-    const smQuery = window.matchMedia('(min-width: 640px)')
-
     const measure = () => {
       const navH = navbar.offsetHeight
       const stepperH = stepper.offsetHeight
-      setStandingsOffset(smQuery.matches ? navH + stepperH : navH)
+      setStandingsOffset(navH + stepperH - 2)
       setSidebarOffset(navH + stepperH)
     }
 
@@ -186,51 +221,86 @@ function useStickyOffsets() {
     const ro = new ResizeObserver(measure)
     ro.observe(navbar)
     ro.observe(stepper)
-    smQuery.addEventListener('change', measure)
     return () => {
       ro.disconnect()
-      smQuery.removeEventListener('change', measure)
     }
   }, [])
 
   return { standingsOffset, sidebarOffset }
 }
 
-export default function GroupsPage() {
-  const [selectedGroup, setSelectedGroup] = useState<string>('A')
+function GroupsPageContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const { standingsOffset, sidebarOffset } = useStickyOffsets()
   const {
     groupPredictions,
     tieBreakResolutions,
     setGroupPrediction,
     completedGroups,
-    submitted,
     predictionsLocked,
-    editingSubmission,
     autofillDemo,
     autofillGroupDemo,
     autofillMatchDemo,
     setTieBreakResolution,
   } = usePredictions()
-  const readOnlySubmitted = submitted && !editingSubmission
 
-  const matches = getMatchesByGroup(selectedGroup)
-  const groupComplete = completedGroups.includes(selectedGroup)
-  const allComplete = completedGroups.length === 12
-  const unresolvedGroupTies = useMemo(
-    () => groupComplete ? findUnresolvedGroupTies(selectedGroup, groupPredictions) : [],
-    [groupComplete, selectedGroup, groupPredictions],
+  const rawGroupParam = searchParams.get('group')
+  const { value: selection, canonical } = resolveSelectedGroup(
+    rawGroupParam,
+    completedGroups,
+  )
+  const isThirds = selection === 'thirds'
+
+  // On cold load with a missing/invalid param, rewrite the URL once to the
+  // canonical selection so refresh and back/forward are stable. Ref-gated so
+  // it never re-runs when completedGroups later changes — the URL wins after
+  // the first paint.
+  const didInitRef = useRef(false)
+  useEffect(() => {
+    if (didInitRef.current) return
+    didInitRef.current = true
+    if (!canonical) {
+      router.replace(predictGroupsHref(selection))
+    }
+  }, [canonical, selection, router])
+
+  const selectGroup = useCallback(
+    (next: PredictGroupSelection) => {
+      router.push(predictGroupsHref(next))
+    },
+    [router],
   )
 
-  // When the user moves to a different group (via the mobile bottom bar, the
-  // inline prev/next, or the pill selector), jump back to the top so they see
-  // the new group's first match instead of staying scrolled to the bottom.
-  // Skip the very first render so we don't fight the browser's restored
-  // scroll position when navigating into the page.
-  const isFirstGroupRender = useRef(true)
+  // Group-mode derived data. When the 3rds tab is active these are computed
+  // but not rendered, so we fall back to a valid group letter to keep the
+  // helpers happy.
+  const activeGroup: GroupId = isThirds ? 'L' : (selection as GroupId)
+  const matches = getMatchesByGroup(activeGroup)
+  const groupComplete = completedGroups.includes(activeGroup)
+  const unresolvedGroupTies = useMemo(
+    () => groupComplete ? findUnresolvedGroupTies(activeGroup, groupPredictions) : [],
+    [groupComplete, activeGroup, groupPredictions],
+  )
+
+  // Subtitle for the 3rds tab switches copy when there are qualification-
+  // relevant ties around the top-8 cutoff. Computed only in 3rds mode.
+  const thirdsHasCutoffTies = useMemo(() => {
+    if (!isThirds) return false
+    const allStandings: Record<string, ReturnType<typeof calculateGroupStandings>> = {}
+    for (const group of GROUPS) {
+      allStandings[group] = calculateGroupStandings(group, groupPredictions, { tieBreakResolutions })
+    }
+    return findQualificationRelevantThirdPlaceTies(allStandings).length > 0
+  }, [isThirds, groupPredictions, tieBreakResolutions])
+
+  // Scroll back to the top whenever the selection changes (group → group,
+  // group → 3rds, or via browser back/forward). Skip the first render so the
+  // browser's restored scroll position wins on cold loads / refresh.
+  const isFirstRender = useRef(true)
   useEffect(() => {
-    if (isFirstGroupRender.current) {
-      isFirstGroupRender.current = false
+    if (isFirstRender.current) {
+      isFirstRender.current = false
       return
     }
     const prefersReducedMotion =
@@ -240,141 +310,59 @@ export default function GroupsPage() {
       top: 0,
       behavior: prefersReducedMotion ? 'auto' : 'smooth',
     })
-  }, [selectedGroup])
+  }, [selection])
 
-  const prevGroup = GROUPS[GROUPS.indexOf(selectedGroup as GroupId) - 1]
-  const nextGroup = GROUPS[GROUPS.indexOf(selectedGroup as GroupId) + 1]
+  const groupIndex = GROUPS.indexOf(activeGroup)
+  const prevGroup = GROUPS[groupIndex - 1]
+  const nextGroup = GROUPS[groupIndex + 1]
+
+  const subtitle = isThirds
+    ? thirdsHasCutoffTies
+      ? 'The eight best third-place teams advance. Use the arrows to resolve ties around the cutoff.'
+      : 'The eight best third-place teams advance to the knockout stage.'
+    : 'Predict the score for each of the 72 group matches'
 
   return (
     <div className="space-y-4 pb-24 sm:pb-0">
       <div>
         <h1 className="text-2xl font-bold">Group Stage Predictions</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Predict the score for each of the 72 group matches
-        </p>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          {allComplete && (
-            <Link href="/predict/thirds">
-              <Button size="sm">Next: Best 3rds</Button>
-            </Link>
+          {subtitle}
+          {isThirds && (
+            <TieBreakerRulesHelp type="third-place" variant="standalone" />
           )}
-          {!predictionsLocked && !readOnlySubmitted && (
+        </p>
+        {!predictionsLocked && !isThirds && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
               onClick={() => autofillDemo()}
               className="text-xs font-medium text-pink-400 hover:text-pink-300 transition-colors flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-pink-500/20 hover:border-pink-500/40 hover:bg-pink-500/5"
             >
               <span className="dice-shake">🎲</span> Auto predict all groups
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* Group selector — scrolls with the page. The standings below are the
-          only sticky element on mobile, keeping the sticky surface minimal. */}
       <div className="-mx-4 px-4 py-3 border-b border-border/30">
         <GroupSelector
-          selectedGroup={selectedGroup}
-          onSelect={setSelectedGroup}
+          selection={selection}
+          onSelect={selectGroup}
           completedGroups={completedGroups}
         />
       </div>
 
-      {/* Inline standings on viewports without the right-side sidebar. Sticks
-          just under the global header (and the predict stepper, on `sm:`+). */}
-      <div
-        className="md:hidden sticky z-30 -mx-4 px-4 py-3 bg-background/95 backdrop-blur-sm border-b border-border/30 space-y-3"
-        style={{ top: standingsOffset }}
-      >
-        <MiniStandings
-          groupId={selectedGroup}
-          groupPredictions={groupPredictions}
-          tieBreakResolutions={tieBreakResolutions}
-        />
-        {groupComplete && unresolvedGroupTies.length > 0 && (
-          <TieBreakResolver
-            ties={unresolvedGroupTies}
-            tieBreakResolutions={tieBreakResolutions}
-            onResolve={setTieBreakResolution}
-            disabled={predictionsLocked || readOnlySubmitted}
-            compact
-            collapsible
-          />
-        )}
-      </div>
-
-      {/* Two-column layout on desktop */}
-      <div className="flex gap-6">
-        {/* Left: match cards (3/4 on desktop) */}
-        <div className="flex-1 min-w-0 space-y-2">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-3">
-              <h2 className="text-lg font-bold">Group {selectedGroup}</h2>
-              {groupComplete && (
-                <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-400 text-xs">
-                  Complete
-                </Badge>
-              )}
-            </div>
-            {!predictionsLocked && !readOnlySubmitted && (
-              <button
-                onClick={() => autofillGroupDemo(selectedGroup)}
-                className="text-xs font-medium text-pink-400 hover:text-pink-300 transition-colors flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-pink-500/20 hover:border-pink-500/40 hover:bg-pink-500/5"
-              >
-                <span className="dice-shake">🎲</span> Auto predict group {selectedGroup}
-              </button>
-            )}
-          </div>
-
-          {matches.map(match => (
-            <GroupMatchCard
-              key={match.id}
-              match={match}
-              prediction={groupPredictions[match.id]}
-              onPredictionChange={setGroupPrediction}
-              disabled={predictionsLocked || readOnlySubmitted}
-              onAutofill={autofillMatchDemo}
-            />
-          ))}
-
-          {/* Inline prev/next is duplicated by the mobile bottom bar — hide
-              the inline buttons on mobile to avoid two sets of controls.
-              Navigation to "Best 3rds" lives in the stepper (desktop) and in
-              the mobile bottom bar (group L only), so we no longer render a
-              "Continue to Best 3rds" CTA on every group. */}
-          <div className="hidden sm:flex gap-2 pt-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 sm:flex-none"
-              onClick={() => {
-                const idx = GROUPS.indexOf(selectedGroup as GroupId)
-                if (idx > 0) setSelectedGroup(GROUPS[idx - 1])
-              }}
-              disabled={selectedGroup === 'A'}
-            >
-              &larr; Group {GROUPS[GROUPS.indexOf(selectedGroup as GroupId) - 1] ?? ''}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 sm:flex-none"
-              onClick={() => {
-                const idx = GROUPS.indexOf(selectedGroup as GroupId)
-                if (idx < GROUPS.length - 1) setSelectedGroup(GROUPS[idx + 1])
-              }}
-              disabled={selectedGroup === 'L'}
-            >
-              Group {GROUPS[GROUPS.indexOf(selectedGroup as GroupId) + 1] ?? ''} &rarr;
-            </Button>
-          </div>
-        </div>
-
-        {/* Right: sticky standings sidebar — shown from `md:` upward so tablets
-            get the same two-column layout as desktop. */}
-        <div className="hidden md:block w-1/3 shrink-0">
-          <div className="sticky space-y-3" style={{ top: sidebarOffset }}>
+      {isThirds ? (
+        <BestThirdsView />
+      ) : (
+        <>
+          {/* Inline standings on viewports without the right-side sidebar. */}
+          <div
+            className="md:hidden sticky z-30 -mx-4 px-4 py-3 bg-background/95 backdrop-blur-sm border-b border-border/30 space-y-3"
+            style={{ top: standingsOffset }}
+          >
             <MiniStandings
-              groupId={selectedGroup}
+              groupId={activeGroup}
               groupPredictions={groupPredictions}
               tieBreakResolutions={tieBreakResolutions}
             />
@@ -383,47 +371,173 @@ export default function GroupsPage() {
                 ties={unresolvedGroupTies}
                 tieBreakResolutions={tieBreakResolutions}
                 onResolve={setTieBreakResolution}
-                disabled={predictionsLocked || readOnlySubmitted}
+                disabled={predictionsLocked}
                 compact
+                collapsible
               />
             )}
           </div>
-        </div>
-      </div>
 
-      {/* Mobile-only sticky bottom bar with prev/next group nav. iOS safe-area
-          aware so the buttons clear the home indicator. Group A hides the
-          "previous" button entirely; Group L swaps "next" for the Best 3rds
-          link so the user has somewhere to go after the final group. */}
+          <div className="flex gap-6">
+            <div className="flex-1 min-w-0 space-y-2">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-lg font-bold">Group {activeGroup}</h2>
+                  {groupComplete && (
+                    <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-400 text-xs">
+                      Complete
+                    </Badge>
+                  )}
+                </div>
+                {!predictionsLocked && (
+                  <button
+                    onClick={() => autofillGroupDemo(activeGroup)}
+                    className="text-xs font-medium text-pink-400 hover:text-pink-300 transition-colors flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-pink-500/20 hover:border-pink-500/40 hover:bg-pink-500/5"
+                  >
+                    <span className="dice-shake">🎲</span> Auto predict group {activeGroup}
+                  </button>
+                )}
+              </div>
+
+              {matches.map(match => (
+                <GroupMatchCard
+                  key={match.id}
+                  match={match}
+                  prediction={groupPredictions[match.id]}
+                  onPredictionChange={setGroupPrediction}
+                  disabled={predictionsLocked}
+                  onAutofill={autofillMatchDemo}
+                />
+              ))}
+
+              {/* Desktop inline prev/next. At Group L the right button points
+                  to the 3rds tab instead of a group. */}
+              <div className="hidden sm:flex gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 sm:flex-none"
+                  onClick={() => prevGroup && selectGroup(prevGroup)}
+                  disabled={!prevGroup}
+                >
+                  &larr; Group {prevGroup ?? ''}
+                </Button>
+                {nextGroup ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 sm:flex-none"
+                    onClick={() => selectGroup(nextGroup)}
+                  >
+                    Group {nextGroup} &rarr;
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 sm:flex-none"
+                    onClick={() => selectGroup('thirds')}
+                  >
+                    3rds &rarr;
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            <div className="hidden md:block w-1/3 shrink-0">
+              <div className="sticky space-y-3" style={{ top: sidebarOffset }}>
+                <MiniStandings
+                  groupId={activeGroup}
+                  groupPredictions={groupPredictions}
+                  tieBreakResolutions={tieBreakResolutions}
+                />
+                {groupComplete && unresolvedGroupTies.length > 0 && (
+                  <TieBreakResolver
+                    ties={unresolvedGroupTies}
+                    tieBreakResolutions={tieBreakResolutions}
+                    onResolve={setTieBreakResolution}
+                    disabled={predictionsLocked}
+                    compact
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Desktop inline CTAs for the 3rds tab. */}
+      {isThirds && (
+        <div className="hidden sm:flex gap-2 justify-between items-center">
+          <Button variant="outline" size="sm" onClick={() => selectGroup('L')}>
+            &larr; Group L
+          </Button>
+          <Link href="/predict/bracket">
+            <Button size="sm">Next: Bracket</Button>
+          </Link>
+        </div>
+      )}
+
+      {/* Mobile-only sticky bottom bar. */}
       <div
         className="sm:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border/40 bg-background/95 backdrop-blur-sm px-4 pt-3"
         style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
       >
         <div className="flex gap-2">
-          {prevGroup && (
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={() => setSelectedGroup(prevGroup)}
-            >
-              &larr; Group {prevGroup}
-            </Button>
-          )}
-          {nextGroup ? (
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={() => setSelectedGroup(nextGroup)}
-            >
-              Group {nextGroup} &rarr;
-            </Button>
+          {isThirds ? (
+            <>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => selectGroup('L')}
+              >
+                &larr; Group L
+              </Button>
+              <Link href="/predict/bracket" className="flex-1">
+                <Button className="w-full">Bracket &rarr;</Button>
+              </Link>
+            </>
           ) : (
-            <Link href="/predict/thirds" className="flex-1">
-              <Button className="w-full">Best 3rds &rarr;</Button>
-            </Link>
+            <>
+              {prevGroup && (
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => selectGroup(prevGroup)}
+                >
+                  &larr; Group {prevGroup}
+                </Button>
+              )}
+              {nextGroup ? (
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => selectGroup(nextGroup)}
+                >
+                  Group {nextGroup} &rarr;
+                </Button>
+              ) : (
+                <Button
+                  className="flex-1"
+                  onClick={() => selectGroup('thirds')}
+                >
+                  3rds &rarr;
+                </Button>
+              )}
+            </>
           )}
         </div>
       </div>
     </div>
+  )
+}
+
+export default function GroupsPage() {
+  // useSearchParams requires a Suspense boundary so the rest of the tree
+  // can still be statically rendered.
+  return (
+    <Suspense fallback={null}>
+      <GroupsPageContent />
+    </Suspense>
   )
 }
