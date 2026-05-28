@@ -13,6 +13,13 @@ interface GroupMatchCardProps {
   disabled?: boolean
 }
 
+const MIN_SCORE = 0
+const MAX_SCORE = 99
+
+function clampScore(value: number): number {
+  return Math.max(MIN_SCORE, Math.min(MAX_SCORE, value))
+}
+
 function TeamColumn({
   team,
   score,
@@ -24,30 +31,75 @@ function TeamColumn({
   onChange: (value: number | undefined) => void
   disabled?: boolean
 }) {
+  // Stepper semantics: a tap on `+` while the score is unset commits the
+  // prediction to 1 (the user's first goal) and a tap on `-` drops it to 0,
+  // so both buttons are immediately useful from the empty state.
+  const handleIncrement = () => {
+    if (score === undefined) {
+      onChange(1)
+      return
+    }
+    onChange(clampScore(score + 1))
+  }
+
+  const handleDecrement = () => {
+    if (score === undefined) {
+      onChange(0)
+      return
+    }
+    if (score <= MIN_SCORE) return
+    onChange(clampScore(score - 1))
+  }
+
+  const decrementDisabled = disabled || score === MIN_SCORE
+  const incrementDisabled = disabled || score === MAX_SCORE
+
   return (
     <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
       <TeamFlag team={team} size={40} className="sm:size-12" />
       <p className="font-medium text-xs sm:text-sm text-center leading-tight w-full truncate">{team.name}</p>
-      <Input
-        type="number"
-        min={0}
-        max={99}
-        value={score ?? ''}
-        onChange={e => {
-          const raw = e.target.value
-          if (raw === '') {
-            onChange(undefined)
-            return
-          }
-          if (raw.length > 1 && raw.startsWith('0')) return
-          const parsed = parseInt(raw, 10)
-          if (Number.isNaN(parsed)) return
-          onChange(Math.max(0, Math.min(99, parsed)))
-        }}
-        disabled={disabled}
-        className="w-14 h-12 text-center text-xl font-bold p-0 mt-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-        placeholder="-"
-      />
+      <div className="mt-1 flex items-center justify-center gap-1.5">
+        <button
+          type="button"
+          aria-label={`Decrease ${team.name} score`}
+          onClick={handleDecrement}
+          disabled={decrementDisabled}
+          className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-card/60 text-xl font-semibold leading-none text-foreground/80 transition-colors hover:border-border hover:bg-card hover:text-foreground active:scale-95 disabled:pointer-events-none disabled:opacity-30 sm:size-9 sm:text-lg"
+        >
+          −
+        </button>
+        <Input
+          type="number"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          min={MIN_SCORE}
+          max={MAX_SCORE}
+          value={score ?? ''}
+          onChange={e => {
+            const raw = e.target.value
+            if (raw === '') {
+              onChange(undefined)
+              return
+            }
+            if (raw.length > 1 && raw.startsWith('0')) return
+            const parsed = parseInt(raw, 10)
+            if (Number.isNaN(parsed)) return
+            onChange(clampScore(parsed))
+          }}
+          disabled={disabled}
+          className="w-12 h-10 text-center text-xl font-bold p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none sm:h-9"
+          placeholder="-"
+        />
+        <button
+          type="button"
+          aria-label={`Increase ${team.name} score`}
+          onClick={handleIncrement}
+          disabled={incrementDisabled}
+          className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-card/60 text-xl font-semibold leading-none text-foreground/80 transition-colors hover:border-border hover:bg-card hover:text-foreground active:scale-95 disabled:pointer-events-none disabled:opacity-30 sm:size-9 sm:text-lg"
+        >
+          +
+        </button>
+      </div>
     </div>
   )
 }
