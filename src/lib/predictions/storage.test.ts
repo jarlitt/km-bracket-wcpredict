@@ -3,12 +3,16 @@ import {
   ANON_DRAFT_STORAGE_KEY,
   ANON_SCOPE,
   clearAnonDraft,
+  clearSubmittedSnapshot,
   defaultPredictionsState,
+  predictionsSnapshotStorageKey,
   predictionsStorageKey,
   readAnonDraft,
   readPredictionsFromStorage,
+  readSubmittedSnapshot,
   writeAnonDraft,
   writePredictionsToStorage,
+  writeSubmittedSnapshot,
   type StorageLike,
   type PredictionsState,
 } from './storage'
@@ -214,5 +218,49 @@ describe('anon draft helpers', () => {
     clearAnonDraft(storage)
 
     expect(storage.has(ANON_DRAFT_STORAGE_KEY)).toBe(false)
+  })
+})
+
+describe('predictionsSnapshotStorageKey', () => {
+  it('appends :snapshot to the scoped key', () => {
+    expect(predictionsSnapshotStorageKey(USER, POOL)).toBe(
+      `wc2026-predictions:${USER}:${POOL}:snapshot`,
+    )
+  })
+})
+
+describe('submitted-snapshot helpers', () => {
+  it('round-trips a snapshot for a user/pool', () => {
+    const storage = new MemoryStorage()
+    writeSubmittedSnapshot(storage, USER, POOL, sampleState())
+
+    const result = readSubmittedSnapshot(storage, USER, POOL)
+    expect(result).toEqual(sampleState())
+  })
+
+  it('returns null when no snapshot is stored', () => {
+    expect(readSubmittedSnapshot(new MemoryStorage(), USER, POOL)).toBeNull()
+  })
+
+  it('returns null when the stored snapshot is corrupt JSON', () => {
+    const storage = new MemoryStorage()
+    storage.setItem(predictionsSnapshotStorageKey(USER, POOL), '{not-json')
+    expect(readSubmittedSnapshot(storage, USER, POOL)).toBeNull()
+  })
+
+  it('clears the snapshot', () => {
+    const storage = new MemoryStorage()
+    writeSubmittedSnapshot(storage, USER, POOL, sampleState())
+    clearSubmittedSnapshot(storage, USER, POOL)
+
+    expect(storage.has(predictionsSnapshotStorageKey(USER, POOL))).toBe(false)
+  })
+
+  it('preserves submitted=true through a round-trip (unlike drafts)', () => {
+    const storage = new MemoryStorage()
+    writeSubmittedSnapshot(storage, USER, POOL, sampleState())
+
+    const result = readSubmittedSnapshot(storage, USER, POOL)
+    expect(result?.submitted).toBe(true)
   })
 })

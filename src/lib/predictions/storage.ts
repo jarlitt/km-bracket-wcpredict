@@ -91,6 +91,64 @@ export function writePredictionsToStorage(
   safeSet(storage, predictionsStorageKey(scope, poolId), JSON.stringify(state))
 }
 
+export function predictionsSnapshotStorageKey(
+  userId: string,
+  poolId: string,
+): string {
+  return `${STORAGE_PREFIX}:${userId}:${poolId}:snapshot`
+}
+
+/**
+ * Read the last-submitted snapshot for a (user, pool). Unlike the draft, the
+ * snapshot represents a previously-confirmed submission, so `submitted=true`
+ * is preserved on read.
+ *
+ * Returns `null` when no snapshot is stored or when the stored payload is
+ * corrupt. Anonymous users never have a snapshot (they cannot submit).
+ */
+export function readSubmittedSnapshot(
+  storage: StorageLike,
+  userId: string,
+  poolId: string,
+): PredictionsState | null {
+  const raw = safeGet(storage, predictionsSnapshotStorageKey(userId, poolId))
+  if (!raw) return null
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<PredictionsState>
+    return {
+      groupPredictions: parsed.groupPredictions ?? {},
+      knockoutPredictions: parsed.knockoutPredictions ?? {},
+      knockoutMatchups: parsed.knockoutMatchups ?? {},
+      tieBreakResolutions: parsed.tieBreakResolutions ?? {},
+      submitted: true,
+    }
+  } catch {
+    return null
+  }
+}
+
+export function writeSubmittedSnapshot(
+  storage: StorageLike,
+  userId: string,
+  poolId: string,
+  state: PredictionsState,
+): void {
+  safeSet(
+    storage,
+    predictionsSnapshotStorageKey(userId, poolId),
+    JSON.stringify(state),
+  )
+}
+
+export function clearSubmittedSnapshot(
+  storage: StorageLike,
+  userId: string,
+  poolId: string,
+): void {
+  safeRemove(storage, predictionsSnapshotStorageKey(userId, poolId))
+}
+
 export const PREDICTIONS_STORAGE_PREFIX = STORAGE_PREFIX
 export const ANON_DRAFT_STORAGE_KEY = `${STORAGE_PREFIX}:${ANON_SCOPE}:draft`
 
