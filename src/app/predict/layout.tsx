@@ -30,7 +30,6 @@ const TOTAL_KNOCKOUT_MATCHES = 32
 
 const STEPS = [
   { href: '/predict/groups', label: 'Groups' },
-  { href: '/predict/thirds', label: 'Best 3rds' },
   { href: '/predict/bracket', label: 'Bracket' },
   { href: '/predict/summary', label: 'Summary' },
 ] as const
@@ -294,7 +293,7 @@ export default function PredictLayout({
     }
   }, [isDirty])
 
-  const showSubmitInStrip = !submitted && !predictionsLocked
+  const showSubmitInStrip = hasSomethingToSubmit && !predictionsLocked
   const showDirtyBanner = isDirty && !predictionsLocked
 
   return (
@@ -370,14 +369,14 @@ export default function PredictLayout({
         </div>
       </div>
 
-      {showDirtyBanner && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="border-b border-amber-500/30 bg-amber-500/10"
-        >
-          <div className="max-w-7xl mx-auto px-4 py-2 flex items-center gap-3">
-            <p className="flex-1 text-xs text-amber-300">
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        {showDirtyBanner && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4"
+          >
+            <p className="text-sm text-amber-300">
               You have unsaved changes.{' '}
               <button
                 type="button"
@@ -390,23 +389,10 @@ export default function PredictLayout({
                 Discard
               </button>
             </p>
-            <Button
-              size="sm"
-              onClick={() => void handleSubmit()}
-              disabled={submitButtonDisabled}
-              className={cn(
-                'shrink-0 bg-emerald-600 hover:bg-emerald-700',
-                submitButtonDisabled &&
-                  'bg-emerald-600/40 hover:bg-emerald-600/40',
-              )}
-            >
-              {submitButtonLabel}
-            </Button>
           </div>
-        </div>
-      )}
-
-      <div className="max-w-7xl mx-auto px-4 py-6">{children}</div>
+        )}
+        {children}
+      </div>
 
       {authOpen && (
         <AuthModal
