@@ -212,6 +212,26 @@ export default function GroupsPage() {
     [groupComplete, selectedGroup, groupPredictions],
   )
 
+  // When the user moves to a different group (via the mobile bottom bar, the
+  // inline prev/next, or the pill selector), jump back to the top so they see
+  // the new group's first match instead of staying scrolled to the bottom.
+  // Skip the very first render so we don't fight the browser's restored
+  // scroll position when navigating into the page.
+  const isFirstGroupRender = useRef(true)
+  useEffect(() => {
+    if (isFirstGroupRender.current) {
+      isFirstGroupRender.current = false
+      return
+    }
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    window.scrollTo({
+      top: 0,
+      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+    })
+  }, [selectedGroup])
+
   const prevGroup = GROUPS[GROUPS.indexOf(selectedGroup as GroupId) - 1]
   const nextGroup = GROUPS[GROUPS.indexOf(selectedGroup as GroupId) + 1]
 
