@@ -3,6 +3,7 @@
 import {
   createContext,
   useContext,
+  useMemo,
   useState,
   useEffect,
   useCallback,
@@ -60,6 +61,13 @@ interface PredictionsContextType extends PredictionsState {
   predictionsLocked: boolean
   isDirty: boolean
   submittedSnapshot: PredictionsState | null
+  /**
+   * Bracket matchups freshly resolved from the user's CURRENT state (not the
+   * last submission). `null` until all 12 groups have a complete prediction.
+   * Differs from `submittedSnapshot.knockoutMatchups` whenever group edits
+   * have flipped which teams advance vs. what was last submitted.
+   */
+  currentResolvedMatchups: Record<string, KnockoutMatchup> | null
 }
 
 const PredictionsContext = createContext<PredictionsContextType | null>(null)
@@ -592,6 +600,12 @@ function ScopedPredictionsProvider({
   const totalKnockoutPredictions = Object.keys(state.knockoutPredictions).length
   const isDirty = computeIsDirty(state, submittedSnapshot)
   const predictionsLocked = isTournamentLocked()
+  const currentResolvedMatchups = useMemo<Record<string, KnockoutMatchup> | null>(() => {
+    if (completedGroups.length !== 12) return null
+    const generatedMatches = buildKnockoutMatchesForState(state)
+    const resolved = resolveKnockoutMatches(generatedMatches, state.knockoutPredictions)
+    return matchupsFromKnockoutMatches(resolved)
+  }, [state, completedGroups.length, buildKnockoutMatchesForState])
 
   return (
     <PredictionsContext value={{
@@ -615,6 +629,7 @@ function ScopedPredictionsProvider({
       predictionsLocked,
       isDirty,
       submittedSnapshot,
+      currentResolvedMatchups,
     }}>
       {children}
     </PredictionsContext>

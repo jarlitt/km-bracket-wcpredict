@@ -8,10 +8,7 @@ import { GROUPS } from '@/lib/data/teams'
 import { calculateGroupStandings } from '@/lib/standings/calculate-standings'
 import { determineBestThirdPlaceTeams } from '@/lib/standings/best-third'
 import { generateKnockoutBracket } from '@/lib/bracket/bracket-structure'
-import {
-  applyKnockoutMatchups,
-  resolveKnockoutMatches,
-} from '@/lib/bracket/resolve-bracket'
+import { resolveKnockoutMatches } from '@/lib/bracket/resolve-bracket'
 import Link from 'next/link'
 
 function BracketPageInner() {
@@ -19,7 +16,6 @@ function BracketPageInner() {
   const {
     groupPredictions,
     knockoutPredictions,
-    knockoutMatchups,
     tieBreakResolutions,
     setKnockoutPrediction,
     completedGroups,
@@ -27,6 +23,7 @@ function BracketPageInner() {
     predictionsLocked,
     totalKnockoutPredictions,
     autofillKnockoutDemo,
+    submittedSnapshot,
   } = usePredictions()
 
   const allStandings = useMemo(() => {
@@ -58,10 +55,19 @@ function BracketPageInner() {
 
   const allGroupsComplete = completedGroups.length === 12
 
-  const displayedMatches = useMemo(() => {
-    if (!submitted) return resolvedMatches
-    return applyKnockoutMatchups(resolvedMatches, knockoutMatchups)
-  }, [knockoutMatchups, submitted, resolvedMatches])
+  const highlightChanged = useMemo(() => {
+    if (!submittedSnapshot) return undefined
+    const baseline = submittedSnapshot.knockoutMatchups
+    const changed = new Set<string>()
+    for (const match of resolvedMatches) {
+      const base = baseline[match.id]
+      if (!base) continue
+      if (base.teamAId !== match.teamAId || base.teamBId !== match.teamBId) {
+        changed.add(match.id)
+      }
+    }
+    return changed.size > 0 ? changed : undefined
+  }, [resolvedMatches, submittedSnapshot])
 
   if (!allGroupsComplete) {
     return (
@@ -110,10 +116,11 @@ function BracketPageInner() {
       </div>
 
       <BracketView
-        matches={displayedMatches}
+        matches={resolvedMatches}
         predictions={knockoutPredictions}
         onPickWinner={handlePickWinner}
         disabled={predictionsLocked}
+        highlightChanged={highlightChanged}
       />
 
       <div className="flex gap-2 justify-between items-center">

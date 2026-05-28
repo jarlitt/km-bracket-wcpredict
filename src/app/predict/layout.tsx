@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -24,9 +25,34 @@ import {
   readPendingSubmit,
   writePendingSubmit,
 } from '@/lib/predictions/pending-submit'
+import type { KnockoutMatchup } from '@/types'
 
 const TOTAL_GROUP_MATCHES = 72
 const TOTAL_KNOCKOUT_MATCHES = 32
+
+const STEPS = [
+  { href: '/predict/groups', label: 'Groups' },
+  { href: '/predict/thirds', label: 'Best 3rds' },
+  { href: '/predict/bracket', label: 'Bracket' },
+  { href: '/predict/summary', label: 'Summary' },
+] as const
+
+function isMatchupsEqual(
+  a: Record<string, KnockoutMatchup>,
+  b: Record<string, KnockoutMatchup>,
+): boolean {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)])
+  for (const key of keys) {
+    const av = a[key]
+    const bv = b[key]
+    if (!av || !bv) {
+      if (av !== bv) return false
+      continue
+    }
+    if (av.teamAId !== bv.teamAId || av.teamBId !== bv.teamBId) return false
+  }
+  return true
+}
 
 export default function PredictLayout({
   children,
@@ -45,6 +71,8 @@ export default function PredictLayout({
     submitPredictions,
     discardUnsavedChanges,
     dbLoaded,
+    submittedSnapshot,
+    currentResolvedMatchups,
   } = usePredictions()
   const [submitting, setSubmitting] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
@@ -54,19 +82,26 @@ export default function PredictLayout({
   const [pendingNavigationHref, setPendingNavigationHref] = useState<
     string | null
   >(null)
-  const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false)
   const attemptedAuthSubmitRef = useRef(false)
   const currentHrefRef = useRef<string | null>(null)
+  const previousMatchupsRef = useRef<Record<string, KnockoutMatchup> | null>(
+    null,
+  )
 
   const allComplete =
     totalGroupPredictions >= TOTAL_GROUP_MATCHES &&
     totalKnockoutPredictions >= TOTAL_KNOCKOUT_MATCHES
   const summaryHref = predictSummaryHref()
   const hasSomethingToSubmit = isDirty || !submitted
-  const submitButtonDisabled = submitting || !allComplete || !hasSomethingToSubmit
+  const submitButtonDisabled =
+    submitting || !allComplete || !hasSomethingToSubmit
   const submitButtonLabel = submitted
-    ? submitting ? 'Updating...' : 'Update submission'
-    : submitting ? 'Submitting...' : 'Submit predictions'
+    ? submitting
+      ? 'Updating...'
+      : 'Update submission'
+    : submitting
+      ? 'Submitting...'
+      : 'Submit predictions'
 
   const handleSubmit = useCallback(async () => {
     if (!hasSomethingToSubmit) return
@@ -100,12 +135,12 @@ export default function PredictLayout({
       return
     }
 
-    if (wasFirstSubmit) {
-      toast.success('Predictions submitted. You can edit them until kickoff.')
-      router.push(summaryHref)
-    } else {
-      toast.success('Submission updated.')
-    }
+    toast.success(
+      wasFirstSubmit
+        ? 'Predictions submitted. You can edit them until kickoff.'
+        : 'Submission updated.',
+    )
+    router.push(summaryHref)
   }, [
     hasSomethingToSubmit,
     totalGroupPredictions,
@@ -116,16 +151,6 @@ export default function PredictLayout({
     router,
     summaryHref,
   ])
-
-  const handleDiscard = () => {
-    setConfirmDiscardOpen(true)
-  }
-
-  const handleConfirmDiscard = () => {
-    discardUnsavedChanges()
-    setConfirmDiscardOpen(false)
-    toast.info('Edits discarded.')
-  }
 
   const handleConfirmNavigation = () => {
     if (!pendingNavigationHref) return
@@ -179,6 +204,34 @@ export default function PredictLayout({
   useEffect(() => {
     currentHrefRef.current = window.location.href
   }, [pathname])
+
+  // Toast when a group/tie-break edit causes the resolved bracket to differ
+  // from the user's last submission. We only fire after the snapshot is set
+  // (i.e. the user has submitted at least once), and only when the matchups
+  // actually changed since the previous render AND now differ from submitted.
+  useEffect(() => {
+    if (!submitted || !currentResolvedMatchups || !submittedSnapshot) return
+
+    if (previousMatchupsRef.current === null) {
+      previousMatchupsRef.current = currentResolvedMatchups
+      return
+    }
+
+    const changedSinceLastRender = !isMatchupsEqual(
+      currentResolvedMatchups,
+      previousMatchupsRef.current,
+    )
+    if (changedSinceLastRender) {
+      const differsFromSubmitted = !isMatchupsEqual(
+        currentResolvedMatchups,
+        submittedSnapshot.knockoutMatchups,
+      )
+      if (differsFromSubmitted) {
+        toast.info('Your bracket changed based on your latest group predictions.')
+      }
+    }
+    previousMatchupsRef.current = currentResolvedMatchups
+  }, [currentResolvedMatchups, submitted, submittedSnapshot])
 
   useEffect(() => {
     if (!isDirty) return
@@ -260,7 +313,7 @@ export default function PredictLayout({
     }
   }, [isDirty])
 
-  const showSubmit = !predictionsLocked
+  const showSubmitInStrip = !submitted && !predictionsLocked
   const showDirtyBanner = isDirty && !predictionsLocked
 
   return (
@@ -269,25 +322,52 @@ export default function PredictLayout({
         id="predict-stepper"
         className="sticky top-14 z-40 border-b border-border/30 bg-background/95 backdrop-blur-sm"
       >
-        <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center gap-3">
-          <PredictProgressBar
-            groupCount={totalGroupPredictions}
-            knockoutCount={totalKnockoutPredictions}
-            className="flex-1"
-          />
-          {showSubmit && (
-            <Button
-              size="sm"
-              onClick={() => void handleSubmit()}
-              disabled={submitButtonDisabled}
-              className={cn(
-                'shrink-0 bg-emerald-600 hover:bg-emerald-700',
-                submitButtonDisabled && 'bg-emerald-600/40 hover:bg-emerald-600/40',
-              )}
-            >
-              {submitButtonLabel}
-            </Button>
-          )}
+        <div className="max-w-7xl mx-auto px-4 py-2 space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-4">
+          <nav
+            aria-label="Predict navigation"
+            className="flex items-center gap-1 overflow-x-auto scrollbar-hide sm:shrink-0"
+          >
+            {STEPS.map((step) => {
+              const isActive =
+                pathname === step.href || pathname.startsWith(`${step.href}/`)
+              return (
+                <Link
+                  key={step.href}
+                  href={step.href}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={cn(
+                    'px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors',
+                    isActive
+                      ? 'bg-card text-foreground border border-border/60'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-card/50',
+                  )}
+                >
+                  {step.label}
+                </Link>
+              )
+            })}
+          </nav>
+          <div className="flex items-center gap-3 sm:flex-1">
+            <PredictProgressBar
+              groupCount={totalGroupPredictions}
+              knockoutCount={totalKnockoutPredictions}
+              className="flex-1 min-w-0"
+            />
+            {showSubmitInStrip && (
+              <Button
+                size="sm"
+                onClick={() => void handleSubmit()}
+                disabled={submitButtonDisabled}
+                className={cn(
+                  'shrink-0 bg-emerald-600 hover:bg-emerald-700',
+                  submitButtonDisabled &&
+                    'bg-emerald-600/40 hover:bg-emerald-600/40',
+                )}
+              >
+                {submitButtonLabel}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -299,16 +379,19 @@ export default function PredictLayout({
         >
           <div className="max-w-7xl mx-auto px-4 py-2 flex items-center gap-3">
             <p className="flex-1 text-xs text-amber-300">
-              You have unsaved changes since your last submission. Update
-              your submission to save them.
+              You have unsaved changes since your last submission.
             </p>
             <Button
-              variant="outline"
               size="sm"
-              onClick={handleDiscard}
-              className="shrink-0 border-amber-500/40 text-amber-200 hover:bg-amber-500/10"
+              onClick={() => void handleSubmit()}
+              disabled={submitButtonDisabled}
+              className={cn(
+                'shrink-0 bg-emerald-600 hover:bg-emerald-700',
+                submitButtonDisabled &&
+                  'bg-emerald-600/40 hover:bg-emerald-600/40',
+              )}
             >
-              Discard changes
+              {submitButtonLabel}
             </Button>
           </div>
         </div>
@@ -355,40 +438,8 @@ export default function PredictLayout({
             >
               Keep editing
             </Button>
-            <Button
-              variant="destructive"
-              onClick={handleConfirmNavigation}
-            >
+            <Button variant="destructive" onClick={handleConfirmNavigation}>
               Discard and leave
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={confirmDiscardOpen}
-        onOpenChange={setConfirmDiscardOpen}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Discard edits?</DialogTitle>
-            <DialogDescription>
-              Your unsaved changes will be reverted to your last submitted
-              predictions.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setConfirmDiscardOpen(false)}
-            >
-              Keep editing
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleConfirmDiscard}
-            >
-              Discard edits
             </Button>
           </DialogFooter>
         </DialogContent>
