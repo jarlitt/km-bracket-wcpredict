@@ -212,8 +212,11 @@ export default function GroupsPage() {
     [groupComplete, selectedGroup, groupPredictions],
   )
 
+  const prevGroup = GROUPS[GROUPS.indexOf(selectedGroup as GroupId) - 1]
+  const nextGroup = GROUPS[GROUPS.indexOf(selectedGroup as GroupId) + 1]
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-24 sm:pb-0">
       <div>
         <h1 className="text-2xl font-bold">Group Stage Predictions</h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -236,10 +239,12 @@ export default function GroupsPage() {
         </div>
       </div>
 
-      {/* Sticky group selector (+ mini standings on mobile only) */}
+      {/* Group selector (+ mini standings on mobile only). Sticky on
+          tablet/desktop only — `static` ignores the inline `top` so it scrolls
+          naturally on mobile. */}
       <div
         ref={groupSelectorRef}
-        className="sticky z-30 -mx-4 px-4 py-3 bg-background/95 backdrop-blur-sm border-b border-border/30 space-y-3"
+        className="static sm:sticky z-30 -mx-4 px-4 py-3 bg-background/95 backdrop-blur-sm border-b border-border/30 space-y-3"
         style={{ top: stepperOffset }}
       >
         <GroupSelector
@@ -302,8 +307,10 @@ export default function GroupsPage() {
             />
           ))}
 
+          {/* Inline prev/next is duplicated by the mobile bottom bar — hide
+              the inline buttons on mobile to avoid two sets of controls. */}
           <div className="flex flex-col sm:flex-row gap-2 sm:justify-between sm:items-center pt-2">
-            <div className="flex gap-2">
+            <div className="hidden sm:flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -356,6 +363,36 @@ export default function GroupsPage() {
               />
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Mobile-only sticky bottom bar with prev/next group nav. iOS safe-area
+          aware so the buttons clear the home indicator. */}
+      <div
+        className="sm:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border/40 bg-background/95 backdrop-blur-sm px-4 pt-3"
+        style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
+      >
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={() => {
+              if (prevGroup) setSelectedGroup(prevGroup)
+            }}
+            disabled={!prevGroup}
+          >
+            &larr; Group {prevGroup ?? ''}
+          </Button>
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={() => {
+              if (nextGroup) setSelectedGroup(nextGroup)
+            }}
+            disabled={!nextGroup}
+          >
+            Group {nextGroup ?? ''} &rarr;
+          </Button>
         </div>
       </div>
     </div>

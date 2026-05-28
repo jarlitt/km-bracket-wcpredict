@@ -297,7 +297,7 @@ export default function PredictLayout({
 
   return (
     <div>
-      <div id="predict-stepper" className="sticky top-14 z-40 border-b border-border/30 bg-background/95 backdrop-blur-sm">
+      <div id="predict-stepper" className="static sm:sticky sm:top-14 z-40 border-b border-border/30 bg-background/95 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 py-2.5 space-y-2">
           <div className="flex items-center gap-1 sm:gap-2">
             {steps.map((step, i) => {
