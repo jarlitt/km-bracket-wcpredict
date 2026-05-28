@@ -100,10 +100,7 @@ export default function ThirdsPage() {
     setTieBreakResolution,
     completedGroups,
     predictionsLocked,
-    submitted,
-    editingSubmission,
   } = usePredictions()
-  const readOnlySubmitted = submitted && !editingSubmission
 
   const allStandings = useMemo(() => {
     const standings: Record<string, ReturnType<typeof calculateGroupStandings>> = {}
@@ -188,9 +185,7 @@ export default function ThirdsPage() {
       {allComplete && qualificationRelevantTieKeys.size > 0 && (
         <div className="flex items-start justify-between gap-3 rounded-xl border border-blue-500/30 bg-blue-500/10 p-4">
           <p className="text-sm text-blue-100">
-            {readOnlySubmitted
-              ? 'Some third-place teams are tied around the qualification cutoff. Edit your submission to adjust who advances.'
-              : 'Some third-place teams are tied around the qualification cutoff. Use the arrows to choose who advances. Bracket slots are assigned from FIFA\u2019s matchup table.'}
+            Some third-place teams are tied around the qualification cutoff. Use the arrows to choose who advances. Bracket slots are assigned from FIFA&rsquo;s matchup table.
           </p>
           <TieBreakerRulesHelp type="third-place" />
         </div>
@@ -244,7 +239,7 @@ export default function ThirdsPage() {
                   : []
                 const tieIndex = tieOrder.indexOf(entry.standing.team.id)
                 const isQualificationRelevantTie = !!tie && qualificationRelevantTieKeys.has(tie.key)
-                const canMoveTie = isQualificationRelevantTie && !predictionsLocked && !readOnlySubmitted
+                const canMoveTie = isQualificationRelevantTie && !predictionsLocked
                 const inTie = isQualificationRelevantTie
                 const isTieStart = inTie && tieIndex === 0
                 const isTieEnd = inTie && tieIndex === tieOrder.length - 1
